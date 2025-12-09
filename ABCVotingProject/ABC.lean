@@ -56,8 +56,9 @@ def is_l_cohesive (inst : ABCInstance V C) (S : Finset V) (l : ℕ) : Prop :=
 
 -- Axiom EJR: A committee W satisfies EJR if for every l-cohesive group S,
 -- there is at least one voter in S who approves at least l candidates in W.
+-- Note: We do not require W.card = k; any committee (including partial ones)
+-- can satisfy EJR, and any completion of an EJR committee preserves EJR.
 def is_ejr (inst : ABCInstance V C) (W : Finset C) : Prop :=
-  W.card = inst.k ∧
   ∀ (S : Finset V) (l : ℕ),
     S ⊆ inst.voters →
     l ≥ 1 →
@@ -67,8 +68,8 @@ def is_ejr (inst : ABCInstance V C) (W : Finset C) : Prop :=
 -- Axiom EJR+: A committee W satisfies EJR+ if for every l-large group S
 -- who all approve some candidate c not in W,
 -- there is at least one voter in S who approves at least l candidates in W.
+-- Note: We do not require W.card = k (same reasoning as EJR).
 def is_ejr_plus (inst : ABCInstance V C) (W : Finset C) : Prop :=
-  W.card = inst.k ∧
   ∀ (S : Finset V) (l : ℕ),
     S ⊆ inst.voters →
     l ≥ 1 →
@@ -82,10 +83,8 @@ def is_ejr_plus (inst : ABCInstance V C) (W : Finset C) : Prop :=
 lemma l_large_nonempty (inst : ABCInstance V C) (S : Finset V) (l : ℕ)
     (hl : l ≥ 1) (h_large : inst.is_l_large S l) : S.Nonempty := by
   unfold is_l_large at h_large
-  have h_voters_pos : 0 < inst.voters.card := Finset.card_pos.mpr inst.voters_nonempty
-  have h_lhs_pos : 0 < l * inst.voters.card := Nat.mul_pos hl h_voters_pos
-  have h_rhs_pos : 0 < S.card * inst.k := lt_of_lt_of_le h_lhs_pos h_large
-  exact Finset.card_pos.mp (Nat.pos_of_mul_pos_right h_rhs_pos)
+  exact Finset.card_pos.mp <| Nat.pos_of_mul_pos_right <|
+    (Nat.mul_pos hl (Finset.card_pos.mpr inst.voters_nonempty)).trans_le h_large
 
 -- Helper lemma: characterize membership in common_approvals
 lemma mem_common_approvals_iff (inst : ABCInstance V C) (S : Finset V) (c : C) :
@@ -96,42 +95,20 @@ lemma mem_common_approvals_iff (inst : ABCInstance V C) (S : Finset V) (c : C) :
 
 theorem ejr_plus_implies_ejr (inst : ABCInstance V C) (W : Finset C) :
     inst.is_ejr_plus W → inst.is_ejr W := by
-  intro ⟨h_card, h_ejr_plus⟩
-  refine ⟨h_card, ?_⟩
+  intro h_ejr_plus
   intro S l h_S_subset hl_pos ⟨h_large, h_common⟩
-  -- We'll prove this by contradiction
-  by_contra h_not
-  push_neg at h_not
-  -- h_not says: for all i in S, utility of i is < l
-  -- Since everyone in S has utility < l, and they have l common approvals,
-  -- at least one common approval must not be in W
-  -- S is l-large with l >= 1, so it's nonempty
-  have h_S_nonempty := l_large_nonempty inst S l hl_pos h_large
-  -- Key insight: if everyone has < l in W, but there are ≥ l common approvals,
-  -- some common approval must be outside W
-  have h_exists_missing : ∃ c ∈ inst.common_approvals S, c ∉ W := by
-    by_contra h_all_in
-    push_neg at h_all_in
-    obtain ⟨i, hi_mem⟩ := h_S_nonempty
-    have h_common_subset : inst.common_approvals S ⊆ W ∩ inst.approves i := by
-      intro c hc
-      simp only [Finset.mem_inter]
-      exact ⟨h_all_in c hc, (mem_common_approvals_iff inst S c).mp hc |>.2 i hi_mem⟩
-    have : (W ∩ inst.approves i).card ≥ l :=
-      h_common.trans (Finset.card_le_card h_common_subset)
-    exact Nat.not_lt.mpr this (h_not i hi_mem)
-  -- Now we have c ∈ common_approvals S but c ∉ W
-  obtain ⟨c, hc_common, hc_not_in_W⟩ := h_exists_missing
-  -- c is approved by all voters in S
-  have hc_approved : ∀ j ∈ S, c ∈ inst.approves j :=
-    (mem_common_approvals_iff inst S c).mp hc_common |>.2
-  -- Now apply EJR+ with S, l, and c
-  have hc_witness : c ∈ inst.candidates \ W := by
-    simp only [Finset.mem_sdiff]
-    exact ⟨(mem_common_approvals_iff inst S c).mp hc_common |>.1, hc_not_in_W⟩
-  obtain ⟨i, hi_mem, hi_utility⟩ :=
-    h_ejr_plus S l h_S_subset hl_pos ⟨h_large, c, hc_witness, hc_approved⟩
-  -- This gives us some i in S with utility >= l, but h_not says all i in S have utility < l
-  exact Nat.not_lt.mpr hi_utility (h_not i hi_mem)
+  -- Either all common approvals are in W, or some is missing
+  by_cases h_sub : inst.common_approvals S ⊆ W
+  -- Case 1: All common approvals in W → any voter in S has ≥ l in W
+  · obtain ⟨i, hi⟩ := l_large_nonempty inst S l hl_pos h_large
+    refine ⟨i, hi, h_common.trans (Finset.card_le_card ?_)⟩
+    exact fun c hc => Finset.mem_inter.mpr
+      ⟨h_sub hc, (mem_common_approvals_iff inst S c).mp hc |>.2 i hi⟩
+  -- Case 2: Some common approval c ∉ W → apply EJR+
+  · obtain ⟨c, hc_common, hc_not_in_W⟩ := Finset.not_subset.mp h_sub
+    have hc := (mem_common_approvals_iff inst S c).mp hc_common
+    exact h_ejr_plus S l h_S_subset hl_pos
+      ⟨h_large, c, Finset.mem_sdiff.mpr ⟨hc.1, hc_not_in_W⟩, hc.2⟩
+
 
 end ABCInstance
