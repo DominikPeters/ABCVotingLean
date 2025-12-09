@@ -1,8 +1,12 @@
 import Mathlib.Data.Finset.Basic
-import Mathlib.Data.Finset.Lattice.Fold -- For Finset.inf (bounded intersection)
-import Mathlib.Data.Fintype.Lattice -- For Finset.mem_inf
+import Mathlib.Data.Finset.Lattice.Fold
+import Mathlib.Data.Fintype.Lattice
 import Mathlib.Data.Rat.Defs
 import Mathlib.Algebra.BigOperators.Ring.Finset
+import Mathlib.Algebra.Order.GroupWithZero.Unbundled.Basic
+import Mathlib.Algebra.Order.BigOperators.Group.Finset
+import Mathlib.Algebra.Order.Ring.Rat
+import Mathlib.Tactic
 
 open Finset BigOperators
 
@@ -110,5 +114,80 @@ theorem ejr_plus_implies_ejr (inst : ABCInstance V C) (W : Finset C) :
     exact h_ejr_plus S l h_S_subset hl_pos
       ⟨h_large, c, Finset.mem_sdiff.mpr ⟨hc.1, hc_not_in_W⟩, hc.2⟩
 
+-- ============================================================================
+-- 6. PARETO OPTIMALITY
+-- ============================================================================
+
+-- Utility function: number of approved candidates in committee
+-- (This is what we already use implicitly; making it explicit)
+def utility (inst : ABCInstance V C) (W : Finset C) (i : V) : ℕ :=
+  (W ∩ inst.approves i).card
+
+-- Pareto dominance: W' Pareto dominates W if everyone is weakly better off
+-- under W' and at least one voter is strictly better off
+def pareto_dominates (inst : ABCInstance V C) (W' W : Finset C) : Prop :=
+  (∀ i ∈ inst.voters, inst.utility W' i ≥ inst.utility W i) ∧
+  (∃ i ∈ inst.voters, inst.utility W' i > inst.utility W i)
+
+-- Pareto optimality: no committee of size k Pareto dominates W
+def is_pareto_optimal (inst : ABCInstance V C) (W : Finset C) : Prop :=
+  W.card = inst.k ∧
+  ∀ W' : Finset C, W'.card = inst.k → ¬inst.pareto_dominates W' W
+
+-- ============================================================================
+-- 7. HELPER LEMMAS FOR HARMONIC FUNCTION
+-- ============================================================================
+
+-- Each term in the harmonic sum is positive
+lemma harmonic_term_pos (i : ℕ) : (0 : ℚ) < 1 / (i + 1) := by
+  exact one_div_pos.mpr (by exact_mod_cast Nat.succ_pos i)
+
+-- Harmonic is weakly monotone
+lemma harmonic_mono {m n : ℕ} (h : m ≤ n) : harmonic m ≤ harmonic n := by
+  unfold harmonic
+  gcongr
+
+-- Harmonic is strictly monotone
+lemma harmonic_strict_mono {m n : ℕ} (h : m < n) : harmonic m < harmonic n := by
+  unfold harmonic
+  exact Finset.sum_lt_sum_of_subset (Finset.range_mono (le_of_lt h)) (Finset.mem_range.mpr h)
+    (Finset.notMem_range_self) (harmonic_term_pos m) (fun j _ _ => le_of_lt (harmonic_term_pos j))
+
+-- ============================================================================
+-- 8. KEY LEMMA: Pareto dominance implies higher PAV score
+-- ============================================================================
+
+-- If W' Pareto dominates W, then PAV score of W' is strictly higher
+lemma pareto_dominates_implies_higher_score (inst : ABCInstance V C) (W W' : Finset C)
+    (h_dom : inst.pareto_dominates W' W) :
+    inst.pav_score W < inst.pav_score W' := by
+  obtain ⟨h_all_weak, j, hj_voter, hj_strict⟩ := h_dom
+  unfold pav_score
+  apply Finset.sum_lt_sum
+  · exact fun i hi => harmonic_mono (h_all_weak i hi)
+  · exact ⟨j, hj_voter, harmonic_strict_mono hj_strict⟩
+
+-- ============================================================================
+-- 9. MAIN THEOREM: PAV winners are Pareto optimal
+-- ============================================================================
+
+/--
+PAV winners satisfy Pareto optimality.
+
+**Proof sketch:** Suppose W is a PAV winner but not Pareto optimal.
+Then there exists W' of size k that Pareto dominates W.
+By `pareto_dominates_implies_higher_score`, pav_score W' > pav_score W.
+But W being a PAV winner means pav_score W' ≤ pav_score W for all W' of size k.
+Contradiction.
+-/
+theorem pav_winner_is_pareto_optimal (inst : ABCInstance V C) (W : Finset C)
+    (h_winner : inst.is_pav_winner W) : inst.is_pareto_optimal W := by
+  obtain ⟨h_card, h_max⟩ := h_winner
+  refine ⟨h_card, ?_⟩
+  intro W' h_card' h_dom
+  have h_score_strict : inst.pav_score W < inst.pav_score W' :=
+    pareto_dominates_implies_higher_score inst W W' h_dom
+  have h_score_le : inst.pav_score W' ≤ inst.pav_score W := h_max W' h_card'
+  exact absurd h_score_strict (not_lt_of_ge h_score_le)
 
 end ABCInstance
