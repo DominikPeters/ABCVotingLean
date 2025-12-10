@@ -367,8 +367,7 @@ lemma start_budget_eq (w : MESWitness V C inst) (i : V) (hi : i ∈ inst.voters)
           s.val < n ∧ (w.rounds s).selected ∈ inst.approves i) ∪
         (if (w.rounds t').selected ∈ inst.approves i then {t'} else ∅) := by
       ext s
-      simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_union,
-        Finset.mem_singleton, t']
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_union, t']
       constructor
       · intro ⟨hs_lt, hs_app⟩
         by_cases hs : s.val < n
@@ -438,7 +437,7 @@ lemma start_budget_nonneg (w : MESWitness V C inst) (i : V) (hi : i ∈ inst.vot
 
 -- Key lemma: If all ρ values before t were ≤ bound, then budget ≥ 1 - utility_before × bound
 lemma start_budget_lower_bound (w : MESWitness V C inst) (i : V) (hi : i ∈ inst.voters)
-    (t : Fin w.num_rounds) (bound : ℚ) (hbound : 0 ≤ bound)
+    (t : Fin w.num_rounds) (bound : ℚ) (_ : 0 ≤ bound)
     (h_rho : ∀ s : Fin w.num_rounds, s.val < t.val →
       (w.rounds s).selected ∈ inst.approves i → (w.rounds s).selected_rho ≤ bound) :
     (w.rounds t).start_budgets i ≥ 1 - (utility_before w i t : ℚ) * bound := by
@@ -570,7 +569,7 @@ lemma final_budget_nonneg (w : MESWitness V C inst) (i : V) (hi : i ∈ inst.vot
   have hfinal := w.final_budgets_correct
   cases' Nat.eq_zero_or_pos w.num_rounds with h0 hpos
   · -- No rounds: final_budgets = 1
-    simp only [h0, dite_false] at hfinal
+    simp only [h0] at hfinal
     rw [congrFun hfinal i]
     norm_num
   · -- At least one round: final_budgets = end_budgets of last round
@@ -588,6 +587,43 @@ lemma final_budget_nonneg (w : MESWitness V C inst) (i : V) (hi : i ∈ inst.vot
       linarith
     · -- Voter didn't approve: end = start ≥ 0
       exact start_budget_nonneg w i hi last
+
+-- An ℓ-large group has |S|/ℓ ≥ n/k = price
+lemma l_large_card_ge_price (S : Finset V) (ℓ : ℕ) (hℓ_pos : 0 < ℓ)
+    (hS_large : inst.is_l_large S ℓ) : S.card * (1 / ℓ : ℚ) ≥ inst.price := by
+  unfold price is_l_large at *
+  have hk_pos : (inst.k : ℚ) > 0 := Nat.cast_pos.mpr inst.k_pos
+  have hℓ_pos' : (ℓ : ℚ) > 0 := Nat.cast_pos.mpr hℓ_pos
+  calc S.card * (1 / ℓ : ℚ) = (S.card : ℚ) / ℓ := by ring
+    _ ≥ inst.voters.card / inst.k := by
+        have h1 : (inst.voters.card : ℚ) * ℓ ≤ S.card * inst.k := by
+          calc (inst.voters.card : ℚ) * ℓ = ℓ * inst.voters.card := by ring
+            _ ≤ S.card * inst.k := by exact_mod_cast hS_large
+        field_simp
+        linarith
+
+-- If an ℓ-large group S all approve candidate c, and each voter in S has budget ≥ 1/ℓ,
+-- then the supporter budget for c is at least the price
+lemma supporter_budget_ge_price_of_cohesive (S : Finset V) (c : C) (ℓ : ℕ)
+    (budgets : V → ℚ)
+    (hℓ_pos : 0 < ℓ)
+    (hS_voters : S ⊆ inst.voters)
+    (hS_large : inst.is_l_large S ℓ)
+    (hc_approved : ∀ i ∈ S, c ∈ inst.approves i)
+    (h_budgets_nonneg : ∀ i ∈ inst.supporters c, i ∉ S → 0 ≤ budgets i)
+    (h_budget_ge : ∀ i ∈ S, budgets i ≥ 1 / ℓ) :
+    inst.supporter_budget budgets c ≥ inst.price := by
+  unfold supporter_budget
+  have hS_sub_supporters : S ⊆ inst.supporters c := by
+    intro i hi
+    unfold supporters
+    exact Finset.mem_filter.mpr ⟨hS_voters hi, hc_approved i hi⟩
+  calc ∑ i ∈ inst.supporters c, budgets i
+      ≥ ∑ i ∈ S, budgets i :=
+        Finset.sum_le_sum_of_subset_of_nonneg hS_sub_supporters h_budgets_nonneg
+    _ ≥ ∑ _ ∈ S, (1 / ℓ : ℚ) := Finset.sum_le_sum h_budget_ge
+    _ = S.card * (1 / ℓ) := by simp [Finset.sum_const, nsmul_eq_mul]
+    _ ≥ inst.price := l_large_card_ge_price S ℓ hℓ_pos hS_large
 
 -- Case ℓ = 1: If voter has 0 representatives, they paid nothing, so budget = 1
 lemma budget_eq_one_of_no_reps (w : MESWitness V C inst) (i : V) (hi : i ∈ inst.voters)
@@ -746,52 +782,16 @@ theorem mes_satisfies_ejr (inst : ABCInstance V C) (W : Finset C)
     exact Finset.mem_image_of_mem _ (Finset.mem_univ t)
   -- Case split: ℓ = 1 vs ℓ ≥ 2
   rcases Nat.eq_or_lt_of_le hℓ_pos with hℓ_eq | hℓ_ge2
-  · -- Case ℓ = 1: All voters in S have 0 representatives, so full budget
-    -- Each voter in S paid nothing, so has budget = 1 ≥ 1/ℓ = 1
-    -- Since |S| ≥ n/k = price, candidate c is affordable, contradiction
+  · -- Case ℓ = 1: All voters in S have 0 representatives, so full budget = 1 ≥ 1/ℓ
     subst hℓ_eq
-    -- Each voter in S has utility 0 (since utility ≤ ℓ - 1 = 0)
-    have h_utility_zero : ∀ i ∈ S, voter_utility w i = 0 := by
-      intro i hi
-      exact Nat.eq_zero_of_le_zero (h_utility i hi)
-    -- So each voter has budget = 1
-    have h_budget_one : ∀ i ∈ S, w.final_budgets i = 1 := by
-      intro i hi
-      exact budget_eq_one_of_no_reps w i (hS_voters hi) (h_utility_zero i hi)
-    -- Supporter budget for c among S is |S| * 1 = |S|
-    -- Since |S| ≥ 1 * n / k = n/k = price, c is affordable
-    have h_supporter_budget : inst.supporter_budget w.final_budgets c ≥ inst.price := by
-      unfold supporter_budget price
-      -- Sum over supporters of c includes all of S (since c is commonly approved)
-      have hS_sub_supporters : S ⊆ inst.supporters c := by
-        intro i hi
-        unfold supporters
-        simp only [Finset.mem_filter]
-        exact ⟨hS_voters hi, hc_approved i hi⟩
-      -- We need: budgets are non-negative for voters not in S
-      have h_budget_nonneg : ∀ i ∈ inst.supporters c, i ∉ S → 0 ≤ w.final_budgets i := by
-        intro i hi_supp _
-        have hi_voter : i ∈ inst.voters := by
-          unfold supporters at hi_supp
-          exact (Finset.mem_filter.mp hi_supp).1
-        exact final_budget_nonneg w i hi_voter
-      calc ∑ i ∈ inst.supporters c, w.final_budgets i
-          ≥ ∑ i ∈ S, w.final_budgets i :=
-            Finset.sum_le_sum_of_subset_of_nonneg hS_sub_supporters h_budget_nonneg
-        _ = ∑ i ∈ S, (1 : ℚ) := Finset.sum_congr rfl (fun i hi => h_budget_one i hi)
-        _ = S.card := by simp
-        _ ≥ inst.voters.card / inst.k := by
-            unfold is_l_large at hS_large
-            have hk_pos : (inst.k : ℚ) > 0 := Nat.cast_pos.mpr inst.k_pos
-            have : (1 : ℕ) * inst.voters.card ≤ S.card * inst.k := hS_large
-            simp at this
-            calc (S.card : ℚ) = S.card * inst.k / inst.k := by field_simp
-              _ ≥ inst.voters.card / inst.k := by
-                  apply div_le_div_of_nonneg_right _ (le_of_lt hk_pos)
-                  exact_mod_cast this
-    -- But termination says c is unaffordable
-    have h_unaffordable := w.termination c hc_cand hc_not_selected
-    linarith
+    have h_budget_one : ∀ i ∈ S, w.final_budgets i = 1 := fun i hi =>
+      budget_eq_one_of_no_reps w i (hS_voters hi) (Nat.eq_zero_of_le_zero (h_utility i hi))
+    have h_supporter_budget : inst.supporter_budget w.final_budgets c ≥ inst.price :=
+      supporter_budget_ge_price_of_cohesive S c 1 w.final_budgets (by omega) hS_voters hS_large
+        hc_approved
+        (fun i hi _ => final_budget_nonneg w i ((Finset.mem_filter.mp hi).1))
+        (fun i hi => by simp [h_budget_one i hi])
+    linarith [w.termination c hc_cand hc_not_selected]
   · -- Case ℓ ≥ 2: Use the paper's argument
     -- The key insight is: either all voters in S maintained budget ≥ 1/ℓ throughout,
     -- or at some point someone paid > 1/ℓ for a candidate.
@@ -809,53 +809,15 @@ theorem mes_satisfies_ejr (inst : ABCInstance V C) (W : Finset C)
     -- Case analysis: either all payments by S voters were ≤ 1/ℓ, or some payment was > 1/ℓ
     by_cases h_all_small : ∀ t : Fin w.num_rounds, ∀ i ∈ S,
         (w.rounds t).selected ∈ inst.approves i → (w.rounds t).selected_rho ≤ 1 / ℓ
-    · -- All payments ≤ 1/ℓ: Each voter in S has budget ≥ 1/ℓ
-      have h_budget_ge : ∀ i ∈ S, w.final_budgets i ≥ 1 / ℓ := by
-        intro i hi
-        have h_rho_bound : ∀ t : Fin w.num_rounds, (w.rounds t).selected ∈ inst.approves i →
-            (w.rounds t).selected_rho ≤ 1 / ℓ := fun t h => h_all_small t i hi h
-        exact budget_lower_bound w i (hS_voters hi) ℓ hℓ2 (h_utility i hi) h_rho_bound
-      -- Sum of budgets over S is ≥ |S| / ℓ ≥ n / k = price
-      have h_supporter_budget : inst.supporter_budget w.final_budgets c ≥ inst.price := by
-        unfold supporter_budget price
-        have hS_sub_supporters : S ⊆ inst.supporters c := by
-          intro i hi
-          unfold supporters
-          simp only [Finset.mem_filter]
-          exact ⟨hS_voters hi, hc_approved i hi⟩
-        have h_budget_nonneg : ∀ i ∈ inst.supporters c, i ∉ S → 0 ≤ w.final_budgets i := by
-          intro i hi_supp _
-          have hi_voter : i ∈ inst.voters := by
-            unfold supporters at hi_supp
-            exact (Finset.mem_filter.mp hi_supp).1
-          exact final_budget_nonneg w i hi_voter
-        calc ∑ i ∈ inst.supporters c, w.final_budgets i
-            ≥ ∑ i ∈ S, w.final_budgets i :=
-              Finset.sum_le_sum_of_subset_of_nonneg hS_sub_supporters h_budget_nonneg
-          _ ≥ ∑ _ ∈ S, (1 / ℓ : ℚ) :=
-              Finset.sum_le_sum (fun i hi => h_budget_ge i hi)
-          _ = S.card * (1 / ℓ) := by simp [Finset.sum_const, nsmul_eq_mul]
-          _ ≥ inst.voters.card / inst.k := by
-              unfold is_l_large at hS_large
-              have hk_pos : (inst.k : ℚ) > 0 := Nat.cast_pos.mpr inst.k_pos
-              have hℓ_pos' : (ℓ : ℚ) > 0 := by positivity
-              have hlarge : ℓ * inst.voters.card ≤ S.card * inst.k := hS_large
-              -- S.card / ℓ ≥ n / k  (from l-large)
-              calc S.card * (1 / ℓ : ℚ) = (S.card : ℚ) / ℓ := by ring
-                _ ≥ inst.voters.card / inst.k := by
-                    have h1 : (inst.voters.card : ℚ) * ℓ ≤ S.card * inst.k := by
-                      have : ℓ * inst.voters.card ≤ S.card * inst.k := hlarge
-                      calc (inst.voters.card : ℚ) * ℓ = ℓ * inst.voters.card := by ring
-                        _ ≤ S.card * inst.k := by exact_mod_cast this
-                    have h2 : (inst.voters.card : ℚ) / inst.k ≤ S.card / ℓ := by
-                      have hne_k : (inst.k : ℚ) ≠ 0 := ne_of_gt hk_pos
-                      have hne_ℓ : (ℓ : ℚ) ≠ 0 := ne_of_gt hℓ_pos'
-                      field_simp
-                      linarith
-                    linarith
-      -- Contradiction: termination says c is unaffordable
-      have h_unaffordable := w.termination c hc_cand hc_not_selected
-      linarith
+    · -- All payments ≤ 1/ℓ: Each voter in S has budget ≥ 1/ℓ at termination
+      have h_budget_ge : ∀ i ∈ S, w.final_budgets i ≥ 1 / ℓ := fun i hi =>
+        budget_lower_bound w i (hS_voters hi) ℓ hℓ2 (h_utility i hi) (h_all_small · i hi)
+      have h_supporter_budget : inst.supporter_budget w.final_budgets c ≥ inst.price :=
+        supporter_budget_ge_price_of_cohesive S c ℓ w.final_budgets hℓ_pos hS_voters hS_large
+          hc_approved
+          (fun i hi _ => final_budget_nonneg w i ((Finset.mem_filter.mp hi).1))
+          h_budget_ge
+      linarith [w.termination c hc_cand hc_not_selected]
 
     · -- Some payment was > 1/ℓ
       -- This is the more complex case from the paper
@@ -949,190 +911,81 @@ theorem mes_satisfies_ejr (inst : ABCInstance V C) (W : Finset C)
       -- i.e., ∑_{i ∈ supporters c} min(1/ℓ, budget_i) ≥ price
       have hc_affordable : (w.rounds t_star).rho c ≠ ⊤ ∧
           ∃ ρ_c : ℚ, (w.rounds t_star).rho c = ↑ρ_c ∧ ρ_c ≤ 1 / ℓ := by
-        -- First show c is affordable (rho ≠ ⊤) by showing supporter_budget ≥ price
         have hS_sub_supporters : S ⊆ inst.supporters c := by
           intro i hi
-          unfold supporters
-          simp only [Finset.mem_filter]
-          exact ⟨hS_voters hi, hc_approved i hi⟩
-        have hk_pos : (inst.k : ℚ) > 0 := Nat.cast_pos.mpr inst.k_pos
-        have hℓ_pos' : (ℓ : ℚ) > 0 := by positivity
-        have h_supp_budget : inst.supporter_budget (w.rounds t_star).start_budgets c ≥ inst.price := by
-          unfold supporter_budget price
-          -- Budget of non-S supporters is ≥ 0 (from start_budget_nonneg)
-          have h_nonneg : ∀ i ∈ inst.supporters c, i ∉ S →
-              0 ≤ (w.rounds t_star).start_budgets i := by
-            intro i hi_supp _
-            have hi_voter : i ∈ inst.voters := by
-              unfold supporters at hi_supp
-              exact (Finset.mem_filter.mp hi_supp).1
-            exact start_budget_nonneg w i hi_voter t_star
-          calc ∑ i ∈ inst.supporters c, (w.rounds t_star).start_budgets i
-              ≥ ∑ i ∈ S, (w.rounds t_star).start_budgets i :=
-                Finset.sum_le_sum_of_subset_of_nonneg hS_sub_supporters h_nonneg
-            _ ≥ ∑ _ ∈ S, (1 / ℓ : ℚ) := Finset.sum_le_sum (fun i hi => h_budget_at_tstar i hi)
-            _ = S.card * (1 / ℓ) := by simp [Finset.sum_const, nsmul_eq_mul]
-            _ ≥ inst.voters.card / inst.k := by
-                unfold is_l_large at hS_large
-                have hlarge : ℓ * inst.voters.card ≤ S.card * inst.k := hS_large
-                calc S.card * (1 / ℓ : ℚ) = (S.card : ℚ) / ℓ := by ring
-                  _ ≥ inst.voters.card / inst.k := by
-                      have h1 : (inst.voters.card : ℚ) * ℓ ≤ S.card * inst.k := by
-                        calc (inst.voters.card : ℚ) * ℓ = ℓ * inst.voters.card := by ring
-                          _ ≤ S.card * inst.k := by exact_mod_cast hlarge
-                      have hne_k : (inst.k : ℚ) ≠ 0 := ne_of_gt hk_pos
-                      have hne_ℓ : (ℓ : ℚ) ≠ 0 := ne_of_gt hℓ_pos'
-                      field_simp
-                      linarith
-        -- c is affordable (not ⊤)
+          exact Finset.mem_filter.mpr ⟨hS_voters hi, hc_approved i hi⟩
+        have h_supp_budget : inst.supporter_budget (w.rounds t_star).start_budgets c ≥ inst.price :=
+          supporter_budget_ge_price_of_cohesive S c ℓ _ hℓ_pos hS_voters hS_large hc_approved
+            (fun i hi _ => start_budget_nonneg w i ((Finset.mem_filter.mp hi).1) t_star)
+            h_budget_at_tstar
+        -- c is affordable (rho ≠ ⊤) since supporter_budget ≥ price
         have hc_affordable' : (w.rounds t_star).rho c ≠ ⊤ := by
           intro habs
-          have := (w.rounds t_star).rho_infinite_iff c hc_cand
-          rw [habs] at this
-          simp only [eq_self_iff_true, true_iff] at this
+          have := ((w.rounds t_star).rho_infinite_iff c hc_cand).mp habs
           linarith
-        constructor
-        · exact hc_affordable'
-        · -- Get the actual ρ value and show it's ≤ 1/ℓ
-          cases' h : (w.rounds t_star).rho c with ρ_c
-          · exact (hc_affordable' h).elim
-          · use ρ_c
-            constructor
-            · rfl
-            · -- Show ρ_c ≤ 1/ℓ by contradiction
-              -- If ρ_c > 1/ℓ, then ∑ min(ρ_c, budget) > price (contradiction with rho_equality)
-              by_contra h_rho_big
-              push_neg at h_rho_big
-              have h_eq := (w.rounds t_star).rho_equality c hc_cand ρ_c h
-              -- For i ∈ S: budget ≥ 1/ℓ, so min(ρ_c, budget) ≥ min(1/ℓ, budget) = 1/ℓ
-              have h_min_ge : ∀ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) ≥ 1 / ℓ := by
-                intro i hi
-                have hb := h_budget_at_tstar i hi
-                calc min ρ_c ((w.rounds t_star).start_budgets i)
-                    ≥ min (1 / (ℓ : ℚ)) ((w.rounds t_star).start_budgets i) := by
-                        apply min_le_min_right
-                        linarith
-                  _ = 1 / ℓ := min_eq_left hb
-              -- Sum over supporters ≥ sum over S ≥ S.card/ℓ ≥ price
-              have h_nonneg' : ∀ i ∈ inst.supporters c, i ∉ S →
-                  0 ≤ min ρ_c ((w.rounds t_star).start_budgets i) := by
-                intro i hi_supp _
-                have hi_voter : i ∈ inst.voters := by
-                  unfold supporters at hi_supp
-                  exact (Finset.mem_filter.mp hi_supp).1
-                apply le_min
-                · -- ρ_c > 1/ℓ > 0
-                  have : (1 : ℚ) / ℓ > 0 := by positivity
-                  linarith
-                · exact start_budget_nonneg w i hi_voter t_star
-              have h_sum_ge : ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i) ≥
-                  S.card * (1 / ℓ : ℚ) := by
-                calc ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i)
-                    ≥ ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) :=
-                      Finset.sum_le_sum_of_subset_of_nonneg hS_sub_supporters h_nonneg'
-                  _ ≥ ∑ _ ∈ S, (1 / ℓ : ℚ) := Finset.sum_le_sum h_min_ge
-                  _ = S.card * (1 / ℓ) := by simp [Finset.sum_const, nsmul_eq_mul]
-              have h_Scard_ge : S.card * (1 / ℓ : ℚ) ≥ inst.price := by
-                unfold price
-                unfold is_l_large at hS_large
-                have hlarge : ℓ * inst.voters.card ≤ S.card * inst.k := hS_large
-                calc S.card * (1 / ℓ : ℚ) = (S.card : ℚ) / ℓ := by ring
-                  _ ≥ inst.voters.card / inst.k := by
-                      have h1 : (inst.voters.card : ℚ) * ℓ ≤ S.card * inst.k := by
-                        calc (inst.voters.card : ℚ) * ℓ = ℓ * inst.voters.card := by ring
-                          _ ≤ S.card * inst.k := by exact_mod_cast hlarge
-                      have hne_k : (inst.k : ℚ) ≠ 0 := ne_of_gt hk_pos
-                      have hne_ℓ : (ℓ : ℚ) ≠ 0 := ne_of_gt hℓ_pos'
-                      field_simp
-                      linarith
-              -- Use rho_witness: some supporter has budget ≥ ρ_c
-              -- This gives strict inequality in the sum, contradicting h_eq
-              obtain ⟨i_w, hi_w_supp, hi_w_budget⟩ :=
-                (w.rounds t_star).rho_witness c hc_cand ρ_c h
-              -- i_w contributes min(ρ_c, budget) = ρ_c since budget ≥ ρ_c
-              have h_iw_contrib : min ρ_c ((w.rounds t_star).start_budgets i_w) = ρ_c :=
-                min_eq_left hi_w_budget
-              -- Split into two cases: i_w ∈ S or i_w ∉ S
-              by_cases hi_w_S : i_w ∈ S
-              · -- Case: witness is in S
-                -- i_w contributes ρ_c > 1/ℓ, while we only counted 1/ℓ in h_sum_ge
-                -- So the actual sum is strictly larger
-                have h_iw_gt : min ρ_c ((w.rounds t_star).start_budgets i_w) > 1 / ℓ := by
-                  rw [h_iw_contrib]; exact h_rho_big
-                have h_iw_counted : min ρ_c ((w.rounds t_star).start_budgets i_w) ≥ 1 / ℓ :=
-                  h_min_ge i_w hi_w_S
-                -- The sum over S is at least sum of (1/ℓ) for each element
-                -- But i_w contributes strictly more than 1/ℓ
-                have h_strict : ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) >
-                    S.card * (1 / ℓ : ℚ) := by
-                  have h_base : ∑ _ ∈ S, (1 / ℓ : ℚ) = S.card * (1 / ℓ) := by
-                    simp [Finset.sum_const, nsmul_eq_mul]
-                  have h_ge : ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) ≥
-                      ∑ _ ∈ S, (1 / ℓ : ℚ) := Finset.sum_le_sum h_min_ge
-                  -- But we have strict inequality because i_w contributes more
-                  have h_exists_gt : ∃ j ∈ S, min ρ_c ((w.rounds t_star).start_budgets j) > 1 / ℓ :=
-                    ⟨i_w, hi_w_S, h_iw_gt⟩
-                  have h_all_ge : ∀ j ∈ S, min ρ_c ((w.rounds t_star).start_budgets j) ≥ 1 / ℓ :=
-                    h_min_ge
-                  calc ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i)
-                      > ∑ _ ∈ S, (1 / ℓ : ℚ) := Finset.sum_lt_sum h_all_ge h_exists_gt
-                    _ = S.card * (1 / ℓ) := h_base
-                -- Now get the contradiction
-                have h_sum_strict : ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i) >
-                    inst.price := by
-                  calc ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i)
-                      ≥ ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) :=
-                        Finset.sum_le_sum_of_subset_of_nonneg hS_sub_supporters h_nonneg'
-                    _ > S.card * (1 / ℓ : ℚ) := h_strict
-                    _ ≥ inst.price := h_Scard_ge
-                linarith
-              · -- Case: witness is not in S
-                -- Sum includes S (contributing ≥ S.card/ℓ) plus i_w (contributing ρ_c > 0)
-                have h_iw_pos : min ρ_c ((w.rounds t_star).start_budgets i_w) > 0 := by
-                  rw [h_iw_contrib]
-                  have : (1 : ℚ) / ℓ > 0 := by positivity
-                  linarith
-                -- i_w ∈ supporters c but i_w ∉ S
-                have h_iw_not_in_S_support : i_w ∈ inst.supporters c \ S := by
-                  exact Finset.mem_sdiff.mpr ⟨hi_w_supp, hi_w_S⟩
-                -- Split supporters into S and (supporters \ S)
-                have h_split : inst.supporters c = S ∪ (inst.supporters c \ S) := by
-                  ext x
-                  simp only [Finset.mem_union, Finset.mem_sdiff]
-                  constructor
-                  · intro hx
-                    by_cases hxS : x ∈ S
-                    · left; exact hxS
-                    · right; exact ⟨hx, hxS⟩
-                  · intro hx
-                    rcases hx with hx | ⟨hx, _⟩
-                    · exact hS_sub_supporters hx
-                    · exact hx
-                have hdisjoint' : Disjoint S (inst.supporters c \ S) := by
-                  simp [Finset.disjoint_sdiff]
-                -- Sum over supporters ≥ sum over S + contribution of i_w
-                have h_sum_strict : ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i) >
-                    S.card * (1 / ℓ : ℚ) := by
-                  rw [h_split, Finset.sum_union hdisjoint']
-                  have h_S_sum : ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) ≥
-                      S.card * (1 / ℓ : ℚ) := by
-                    calc ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i)
-                        ≥ ∑ _ ∈ S, (1 / ℓ : ℚ) := Finset.sum_le_sum h_min_ge
-                      _ = S.card * (1 / ℓ) := by simp [Finset.sum_const, nsmul_eq_mul]
-                  have h_other_pos : ∑ i ∈ inst.supporters c \ S, min ρ_c ((w.rounds t_star).start_budgets i) > 0 := by
-                    apply Finset.sum_pos'
-                    · intro i hi
-                      have hi_supp : i ∈ inst.supporters c := (Finset.mem_sdiff.mp hi).1
-                      have hi_not_S : i ∉ S := (Finset.mem_sdiff.mp hi).2
-                      exact h_nonneg' i hi_supp hi_not_S
-                    · exact ⟨i_w, h_iw_not_in_S_support, h_iw_pos⟩
-                  linarith
-                have h_sum_gt_price : ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i) >
-                    inst.price := by
-                  calc ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i)
-                      > S.card * (1 / ℓ : ℚ) := h_sum_strict
-                    _ ≥ inst.price := h_Scard_ge
-                linarith
+        refine ⟨hc_affordable', ?_⟩
+        -- Get the actual ρ value and show it's ≤ 1/ℓ
+        obtain ⟨ρ_c, h⟩ := WithTop.ne_top_iff_exists.mp hc_affordable'
+        refine ⟨ρ_c, h.symm, ?_⟩
+        -- Show ρ_c ≤ 1/ℓ by contradiction: if ρ_c > 1/ℓ, sum exceeds price
+        by_contra h_rho_big
+        push_neg at h_rho_big
+        have h_eq := (w.rounds t_star).rho_equality c hc_cand ρ_c h.symm
+        -- For i ∈ S: budget ≥ 1/ℓ, so min(ρ_c, budget) ≥ 1/ℓ
+        have h_min_ge : ∀ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) ≥ 1 / ℓ := by
+          intro i hi
+          calc min ρ_c ((w.rounds t_star).start_budgets i)
+              ≥ min (1 / (ℓ : ℚ)) ((w.rounds t_star).start_budgets i) :=
+                min_le_min_right _ (le_of_lt h_rho_big)
+            _ = 1 / ℓ := min_eq_left (h_budget_at_tstar i hi)
+        have h_nonneg' : ∀ i ∈ inst.supporters c, i ∉ S →
+            0 ≤ min ρ_c ((w.rounds t_star).start_budgets i) := fun i hi _ =>
+          le_min (by linarith [h_rho_big, (by positivity : (1 : ℚ) / ℓ > 0)])
+            (start_budget_nonneg w i ((Finset.mem_filter.mp hi).1) t_star)
+        -- Get witness: some supporter has budget ≥ ρ_c, contributing strictly more than 1/ℓ
+        obtain ⟨i_w, hi_w_supp, hi_w_budget⟩ := (w.rounds t_star).rho_witness c hc_cand ρ_c h.symm
+        have h_iw_contrib : min ρ_c ((w.rounds t_star).start_budgets i_w) = ρ_c :=
+          min_eq_left hi_w_budget
+        -- The sum strictly exceeds S.card/ℓ ≥ price, contradicting rho_equality
+        have h_sum_strict : ∑ i ∈ inst.supporters c,
+            min ρ_c ((w.rounds t_star).start_budgets i) > inst.price := by
+          have h_Scard_ge : S.card * (1 / ℓ : ℚ) ≥ inst.price := l_large_card_ge_price S ℓ hℓ_pos hS_large
+          by_cases hi_w_S : i_w ∈ S
+          · -- Witness in S: contributes ρ_c > 1/ℓ, giving strict inequality
+            calc ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i)
+                ≥ ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) :=
+                  Finset.sum_le_sum_of_subset_of_nonneg hS_sub_supporters h_nonneg'
+              _ > ∑ _ ∈ S, (1 / ℓ : ℚ) :=
+                  Finset.sum_lt_sum h_min_ge ⟨i_w, hi_w_S, by rw [h_iw_contrib]; exact h_rho_big⟩
+              _ = S.card * (1 / ℓ) := by simp [Finset.sum_const, nsmul_eq_mul]
+              _ ≥ inst.price := h_Scard_ge
+          · -- Witness outside S: S contributes ≥ S.card/ℓ, witness adds positive amount
+            have h_iw_pos : min ρ_c ((w.rounds t_star).start_budgets i_w) > 0 := by
+              rw [h_iw_contrib]; linarith [h_rho_big, (by positivity : (1 : ℚ) / ℓ > 0)]
+            have h_S_sum : ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) ≥
+                S.card * (1 / ℓ : ℚ) := by
+              calc ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i)
+                  ≥ ∑ _ ∈ S, (1 / ℓ : ℚ) := Finset.sum_le_sum h_min_ge
+                _ = S.card * (1 / ℓ) := by simp [Finset.sum_const, nsmul_eq_mul]
+            have h_rest_pos : ∑ i ∈ inst.supporters c \ S,
+                min ρ_c ((w.rounds t_star).start_budgets i) > 0 :=
+              Finset.sum_pos' (fun i hi => h_nonneg' i (Finset.mem_sdiff.mp hi).1
+                (Finset.mem_sdiff.mp hi).2) ⟨i_w, Finset.mem_sdiff.mpr ⟨hi_w_supp, hi_w_S⟩, h_iw_pos⟩
+            have h_union_subset : S ∪ (inst.supporters c \ S) ⊆ inst.supporters c := by
+              intro x hx
+              rcases Finset.mem_union.mp hx with hxS | hxR
+              · exact hS_sub_supporters hxS
+              · exact (Finset.mem_sdiff.mp hxR).1
+            calc ∑ i ∈ inst.supporters c, min ρ_c ((w.rounds t_star).start_budgets i)
+                ≥ ∑ i ∈ S, min ρ_c ((w.rounds t_star).start_budgets i) +
+                  ∑ i ∈ inst.supporters c \ S, min ρ_c ((w.rounds t_star).start_budgets i) := by
+                    rw [← Finset.sum_union Finset.disjoint_sdiff]
+                    exact Finset.sum_le_sum_of_subset_of_nonneg h_union_subset
+                      (fun i hi hiU => h_nonneg' i hi (fun hiS => hiU (Finset.mem_union_left _ hiS)))
+              _ > S.card * (1 / ℓ : ℚ) + 0 := by linarith
+              _ = S.card * (1 / ℓ : ℚ) := by ring
+              _ ≥ inst.price := h_Scard_ge
+        linarith
 
       -- Step 6: Contradiction via selected_minimal
       -- selected[t_star] has ρ > 1/ℓ, but c is available with ρ ≤ 1/ℓ
