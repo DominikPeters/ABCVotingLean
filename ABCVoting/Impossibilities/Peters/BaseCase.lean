@@ -4,14 +4,17 @@ import ABCVoting.Axioms.Strategyproofness
 import ABCVoting.Fin4Card3
 import ABCVoting.Impossibilities.Peters.BaseCaseACD
 import ABCVoting.Impossibilities.Peters.BaseCaseBCD
+import ABCVoting.Impossibilities.Peters.BaseCaseCommon
 
 open Finset ABCInstance
 
 namespace Peters.BaseCase
 
-abbrev V := Fin 3
-abbrev C := Fin 4
-abbrev k : ℕ := 3
+open Peters.BaseCaseCommon
+
+abbrev V := Peters.BaseCaseCommon.V
+abbrev C := Peters.BaseCaseCommon.C
+abbrev k : ℕ := Peters.BaseCaseCommon.k
 
 open Peters.BaseCaseACD
 
@@ -38,21 +41,21 @@ lemma d_in_W_P₁ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
     singleton_party_size_d_P₁
 
 lemma W_P₁_eq_W_P₁' (f : ABCRule V C k) (hres : f.IsResolute) :
-    Peters.BaseCaseACD.W f hres Peters.BaseCaseACD.P₁ Peters.BaseCaseACD.P₁_proper =
-      Peters.BaseCaseBCD.W f hres Peters.BaseCaseBCD.P₁ Peters.BaseCaseBCD.P₁_proper := by
+    W f hres Peters.BaseCaseACD.P₁ Peters.BaseCaseACD.P₁_proper =
+      W f hres Peters.BaseCaseBCD.P₁ Peters.BaseCaseBCD.P₁_proper := by
   classical
   -- The two instances have identical voters/candidates/approvals; only proof fields differ.
   have :
       f.resolute_committee
-          (Peters.BaseCaseACD.mkInstance Peters.BaseCaseACD.P₁ Peters.BaseCaseACD.P₁_proper) hres =
+          (mkInstance Peters.BaseCaseACD.P₁ Peters.BaseCaseACD.P₁_proper) hres =
         f.resolute_committee
-          (Peters.BaseCaseBCD.mkInstance Peters.BaseCaseBCD.P₁ Peters.BaseCaseBCD.P₁_proper) hres := by
+          (mkInstance Peters.BaseCaseBCD.P₁ Peters.BaseCaseBCD.P₁_proper) hres := by
     refine f.resolute_ballot_ext (hres := hres) (inst := _ ) (inst' := _) ?_ ?_ ?_
     · rfl
     · rfl
     · intro v _
       fin_cases v <;> rfl
-  simpa [Peters.BaseCaseACD.W, Peters.BaseCaseBCD.W] using this
+  simpa [W] using this
 
 theorem base_case_impossible
     (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
@@ -62,7 +65,7 @@ theorem base_case_impossible
   have hd : (3 : C) ∈ W f hres P₁ P₁_proper := d_in_W_P₁ f hres hprop
 
   have hcard3 : (W f hres P₁ P₁_proper).card = 3 := by
-    simpa [k] using (Peters.BaseCaseACD.W_card f hwf hres P₁ P₁_proper)
+    simpa [k] using (W_card f hwf hres P₁ P₁_proper)
 
   set W₁ := W f hres P₁ P₁_proper
 
@@ -90,22 +93,23 @@ theorem base_case_impossible
       simpa [W₁, Peters.BaseCaseACD.comm_abd, hW_eq_abd] using hc
     cases (by decide : ¬(2 : C) ∈ ({0, 1, 3} : Finset (Fin 4))) this
   rcases hW_cases' with hW_eq_acd | hW_eq_bcd
-  · exact Peters.BaseCaseACD.contradiction_from_P₁_eq_acd f hwf hres hprop hsp hW_eq_acd
+  ·
+    refine Peters.BaseCaseACD.contradiction_from_P₁_eq_acd f hwf hres hprop hsp ?_
+    simpa [W₁] using hW_eq_acd
   · -- transfer the equality to the `BaseCaseBCD` version of `P₁`
     have hW_eq_bcd_ACD :
-        Peters.BaseCaseACD.W f hres Peters.BaseCaseACD.P₁ Peters.BaseCaseACD.P₁_proper =
+        W f hres Peters.BaseCaseACD.P₁ Peters.BaseCaseACD.P₁_proper =
           Peters.BaseCaseACD.comm_bcd := by
       simpa [W₁] using hW_eq_bcd
     have hcomm_bcd : Peters.BaseCaseACD.comm_bcd = Peters.BaseCaseBCD.comm_bcd := by
       ext x
       simp [Peters.BaseCaseACD.comm_bcd, Peters.BaseCaseBCD.comm_bcd]
     have hW_eq_bcd' :
-        Peters.BaseCaseBCD.W f hres Peters.BaseCaseBCD.P₁ Peters.BaseCaseBCD.P₁_proper =
+        W f hres Peters.BaseCaseBCD.P₁ Peters.BaseCaseBCD.P₁_proper =
           Peters.BaseCaseBCD.comm_bcd := by
       calc
-        Peters.BaseCaseBCD.W f hres Peters.BaseCaseBCD.P₁ Peters.BaseCaseBCD.P₁_proper
-            =
-          Peters.BaseCaseACD.W f hres Peters.BaseCaseACD.P₁ Peters.BaseCaseACD.P₁_proper := by
+        W f hres Peters.BaseCaseBCD.P₁ Peters.BaseCaseBCD.P₁_proper
+            = W f hres Peters.BaseCaseACD.P₁ Peters.BaseCaseACD.P₁_proper := by
           simpa using (W_P₁_eq_W_P₁' (f := f) (hres := hres)).symm
         _ = Peters.BaseCaseACD.comm_bcd := hW_eq_bcd_ACD
         _ = Peters.BaseCaseBCD.comm_bcd := by simpa [hcomm_bcd]
