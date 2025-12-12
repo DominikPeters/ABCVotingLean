@@ -11,6 +11,8 @@
 -- ============================================================================
 
 import ABCVoting.Basic
+import ABCVoting.ABCRule
+import ABCVoting.Fin4Card3
 
 -- ============================================================================
 -- AXIOMS AND PROPERTIES
@@ -20,6 +22,9 @@ import ABCVoting.Axioms.Basic
 import ABCVoting.Axioms.JRAxioms
 import ABCVoting.Axioms.Pareto
 import ABCVoting.Axioms.Relationships
+import ABCVoting.Axioms.Proportionality
+import ABCVoting.Axioms.Efficiency
+import ABCVoting.Axioms.Strategyproofness
 
 -- ============================================================================
 -- VOTING RULES: PROPORTIONAL APPROVAL VOTING (PAV)
@@ -40,4 +45,4 @@ import ABCVoting.Rules.MES.EJR
 -- IMPOSSIBILITY RESULTS
 -- ============================================================================
 
--- (Future) import ABCVoting.Impossibilities.Strategyproofness
+import ABCVoting.Impossibilities.Peters.Main

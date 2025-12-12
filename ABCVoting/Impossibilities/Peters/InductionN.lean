@@ -33,13 +33,30 @@ The mapping is: new voter i maps to original voter (i mod k).
 def expand_voters (k q : ℕ) (hk : 0 < k) (hq : 0 < q)
     (inst : ABCInstance (Fin k) C kc) :
     ABCInstance (Fin (q * k)) C kc where
-  voters := Finset.univ
+  voters := Finset.univ.filter fun i => (⟨i.val % k, Nat.mod_lt i.val hk⟩ : Fin k) ∈ inst.voters
   candidates := inst.candidates
   approves := fun i => inst.approves ⟨i.val % k, Nat.mod_lt i.val hk⟩
   approves_subset := by
-    intro v _
-    exact inst.approves_subset ⟨v.val % k, Nat.mod_lt v.val hk⟩ (Finset.mem_univ _)
-  voters_nonempty := Finset.univ_nonempty
+    intro v hv
+    have hmapped :
+        (⟨v.val % k, Nat.mod_lt v.val hk⟩ : Fin k) ∈ inst.voters := by
+      simpa [Finset.mem_filter] using (Finset.mem_filter.1 hv).2
+    exact inst.approves_subset _ hmapped
+  voters_nonempty := by
+    classical
+    rcases inst.voters_nonempty with ⟨v0, hv0⟩
+    have hq1 : 1 ≤ q := Nat.succ_le_iff.2 hq
+    have hk_le : k ≤ q * k := by
+      simpa [Nat.one_mul] using Nat.mul_le_mul_right k hq1
+    let i0 : Fin (q * k) := ⟨v0.val, lt_of_lt_of_le v0.isLt hk_le⟩
+    refine ⟨i0, ?_⟩
+    have hmapped : (⟨i0.val % k, Nat.mod_lt i0.val hk⟩ : Fin k) = v0 := by
+      apply Fin.ext
+      simpa [i0, Nat.mod_eq_of_lt v0.isLt]
+    show i0 ∈
+        Finset.univ.filter fun i =>
+          (⟨i.val % k, Nat.mod_lt i.val hk⟩ : Fin k) ∈ inst.voters
+    simp [Finset.mem_filter, hmapped, hv0]
   k_pos := inst.k_pos
   k_le_m := inst.k_le_m
 

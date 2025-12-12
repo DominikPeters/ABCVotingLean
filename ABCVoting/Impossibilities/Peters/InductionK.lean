@@ -91,15 +91,26 @@ lemma dummy_singleton_party (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) 
   simp only [singleton_party, mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
   constructor
   · intro h
-    simp only [extend_instance] at h
     by_cases hv : v.val < k
-    · simp only [hv, ↓reduceDIte] at h
+    · simp [extend_instance, hv] at h
       -- Original voter's approval is embedded candidates, not dummy
       exfalso
-      simp only [Finset.map_eq_singleton] at h
-      obtain ⟨c, _, hc⟩ := h
-      simp only [embed_candidate, dummy_candidate, Fin.mk.injEq] at hc
-      omega
+      have hmem :
+          dummy_candidate k ∈
+            (inst.approves ⟨v.val, hv⟩).map
+              ⟨embed_candidate k, by
+                intro c1 c2 heq
+                simp only [embed_candidate, Fin.mk.injEq] at heq
+                exact Fin.ext heq⟩ := by
+        have : dummy_candidate k ∈ ({dummy_candidate k} : Finset (Fin (k + 2))) :=
+          Finset.mem_singleton_self _
+        simpa [h] using this
+      rcases (Finset.mem_map.1 hmem) with ⟨c, _, hc⟩
+      have hcVal : (embed_candidate k c).val = k + 1 := by
+        simpa [dummy_candidate] using congrArg Fin.val hc
+      have hcVal' : c.val = k + 1 := by
+        simpa [embed_candidate] using hcVal
+      exact (Nat.ne_of_lt c.isLt) hcVal'
     · -- v.val ≥ k, so v must be the dummy voter
       have hv' : v.val = k := by
         have := v.isLt
@@ -136,12 +147,29 @@ noncomputable def induced_rule (k : ℕ)
     -- Remove dummy candidate and map back to Fin (k+1)
     {W.filterMap (fun c =>
       if h : c.val < k + 1 then some ⟨c.val, h⟩ else none) (by
-        intro c1 c2 hc1 hc2
-        simp only [Option.mem_def] at hc1 hc2
-        split_ifs at hc1 hc2 with h1 h2
-        · simp only [Option.some.injEq, Fin.mk.injEq] at hc1 hc2
-          exact Fin.ext (hc1 ▸ hc2)
-        all_goals simp_all)}
+        intro c1 c2 b hb1 hb2
+        have hb1' :
+            (if h : c1.val < k + 1 then some ⟨c1.val, h⟩ else none) = some b := by
+          simpa [Option.mem_def] using hb1
+        have hb2' :
+            (if h : c2.val < k + 1 then some ⟨c2.val, h⟩ else none) = some b := by
+          simpa [Option.mem_def] using hb2
+        by_cases h1 : c1.val < k + 1
+        · have hb1'' : (⟨c1.val, h1⟩ : Fin (k + 1)) = b := by
+            simpa [h1] using hb1'
+          by_cases h2 : c2.val < k + 1
+          · have hb2'' : (⟨c2.val, h2⟩ : Fin (k + 1)) = b := by
+              simpa [h2] using hb2'
+            have : c1.val = c2.val := by
+              have := congrArg Fin.val (hb1''.trans hb2''.symm)
+              simpa using this
+            exact Fin.ext this
+          · have : (none : Option (Fin (k + 1))) = some b := by
+              simpa [h2] using hb2'
+            cases this
+        · have : (none : Option (Fin (k + 1))) = some b := by
+            simpa [h1] using hb1'
+          cases this)}
   extensional := by
     intro inst inst' hv hc ha
     -- Extensionality follows from extensionality of f on the extended instances.

@@ -47,15 +47,14 @@ This is a mild efficiency condition: we should not waste committee seats on
 candidates that no voter approves.
 -/
 def ABCRule.SatisfiesWeakEfficiency (f : ABCRule V C k) : Prop :=
-  ∀ (inst : ABCInstance V C k) (W ∈ f inst) (c ∈ W),
-    ¬inst.is_unapproved c
+  ∀ inst : ABCInstance V C k, ∀ W ∈ f inst, ∀ c ∈ W, ¬inst.is_unapproved c
 
 /--
 Equivalently: every elected candidate must have at least one supporter.
 -/
 lemma ABCRule.satisfiesWeakEfficiency_iff_approved (f : ABCRule V C k) :
     f.SatisfiesWeakEfficiency ↔
-    ∀ (inst : ABCInstance V C k) (W ∈ f inst) (c ∈ W), inst.is_approved c := by
+    ∀ inst : ABCInstance V C k, ∀ W ∈ f inst, ∀ c ∈ W, inst.is_approved c := by
   simp only [ABCRule.SatisfiesWeakEfficiency, is_approved_iff_not_unapproved]
 
 /--
@@ -68,7 +67,7 @@ lemma ABCRule.resolute_weak_efficiency (f : ABCRule V C k)
     (hc : c ∈ f.resolute_committee inst hres) :
     inst.is_approved c := by
   rw [is_approved_iff_not_unapproved]
-  exact heff inst _ (f.resolute_committee_mem inst hres) c hc
+  exact heff inst (f.resolute_committee inst hres) (f.resolute_committee_mem inst hres) c hc
 
 /--
 Equivalently: unapproved candidates are not in the resolute committee.
@@ -79,6 +78,7 @@ lemma ABCRule.unapproved_not_in_resolute (f : ABCRule V C k)
     (hunapproved : inst.is_unapproved c) :
     c ∉ f.resolute_committee inst hres := by
   intro hc
-  exact heff inst _ (f.resolute_committee_mem inst hres) c hc hunapproved
+  exact (heff inst (f.resolute_committee inst hres) (f.resolute_committee_mem inst hres) c hc)
+    hunapproved
 
 end ABCInstance

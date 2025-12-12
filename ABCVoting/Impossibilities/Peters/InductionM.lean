@@ -70,8 +70,11 @@ def extend_candidates (m : ℕ) (inst : ABCInstance V (Fin m) k) :
   voters_nonempty := inst.voters_nonempty
   k_pos := inst.k_pos
   k_le_m := by
-    simp only [Finset.card_fin]
-    exact Nat.le_succ_of_le inst.k_le_m
+    have h1 : inst.candidates.card ≤ m := by
+      simpa using (Finset.card_le_univ inst.candidates)
+    have h2 : inst.candidates.card ≤ m + 1 := le_trans h1 (Nat.le_succ m)
+    have : k ≤ m + 1 := le_trans inst.k_le_m h2
+    simpa [Finset.card_fin] using this
 
 /--
 The dummy candidate is unapproved in the extended instance.
@@ -95,12 +98,27 @@ def restrict_committee (m : ℕ) (W : Finset (Fin (m + 1)))
     (hdummy : dummy_candidate m ∉ W) : Finset (Fin m) :=
   W.filterMap (fun c =>
     if h : c.val < m then some ⟨c.val, h⟩ else none) (by
-      intro c1 c2 hc1 hc2
-      simp only [Option.mem_def] at hc1 hc2
-      split_ifs at hc1 hc2 with h1 h2
-      · simp only [Option.some.injEq, Fin.mk.injEq] at hc1 hc2
-        exact Fin.ext (hc1 ▸ hc2)
-      all_goals simp_all)
+      intro c1 c2 b hb1 hb2
+      have hb1' : (if h : c1.val < m then some ⟨c1.val, h⟩ else none) = some b := by
+        simpa [Option.mem_def] using hb1
+      have hb2' : (if h : c2.val < m then some ⟨c2.val, h⟩ else none) = some b := by
+        simpa [Option.mem_def] using hb2
+      by_cases h1 : c1.val < m
+      · have hb1'' : (⟨c1.val, h1⟩ : Fin m) = b := by
+          simpa [h1] using hb1'
+        by_cases h2 : c2.val < m
+        · have hb2'' : (⟨c2.val, h2⟩ : Fin m) = b := by
+            simpa [h2] using hb2'
+          have : c1.val = c2.val := by
+            have := congrArg Fin.val (hb1''.trans hb2''.symm)
+            simpa using this
+          exact Fin.ext this
+        · have : (none : Option (Fin m)) = some b := by
+            simpa [h2] using hb2'
+          cases this
+      · have : (none : Option (Fin m)) = some b := by
+          simpa [h1] using hb1'
+        cases this)
 
 -- ============================================================================
 -- INDUCED RULE
