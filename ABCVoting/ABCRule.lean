@@ -11,13 +11,26 @@ variable {V C : Type*} [DecidableEq V] [DecidableEq C]
 -- ============================================================================
 
 /--
-An ABC voting rule for committee size k is a function that maps an ABCInstance
-(with matching k) to a set of committees.
+An ABC voting rule for committee size k is a structure with:
+- An apply function that maps an ABCInstance to a set of committees
+- An extensionality property: the rule's output depends only on the voters,
+  candidates, and approval ballots of voters (not on the parameter k)
 
 The rule may return multiple committees (irresolute) or exactly one (resolute).
 -/
-def ABCRule (V C : Type*) [DecidableEq V] [DecidableEq C] (k : ℕ) :=
-  (inst : ABCInstance V C) → inst.k = k → Finset (Finset C)
+structure ABCRule (V C : Type*) [DecidableEq V] [DecidableEq C] (k : ℕ) where
+  apply : ABCInstance V C k → Finset (Finset C)
+  extensional : ∀ inst inst',
+    inst.voters = inst'.voters →
+    inst.candidates = inst'.candidates →
+    (∀ v ∈ inst.voters, inst.approves v = inst'.approves v) →
+    apply inst = apply inst'
+
+/--
+Coerce ABCRule to a function via its apply field.
+-/
+instance : CoeFun (ABCRule V C k) (fun _ => ABCInstance V C k → Finset (Finset C)) where
+  coe f := f.apply
 
 -- ============================================================================
 -- WELL-FORMEDNESS
@@ -27,10 +40,10 @@ def ABCRule (V C : Type*) [DecidableEq V] [DecidableEq C] (k : ℕ) :=
 An ABC rule is well-formed if for every instance, it returns a non-empty set
 of committees, and each committee has size k and is a subset of candidates.
 -/
-def ABCRule.IsWellFormed {k : ℕ} (f : ABCRule V C k) : Prop :=
-  ∀ (inst : ABCInstance V C) (hk : inst.k = k),
-    (f inst hk).Nonempty ∧
-    ∀ W ∈ f inst hk, W.card = k ∧ W ⊆ inst.candidates
+def ABCRule.IsWellFormed (f : ABCRule V C k) : Prop :=
+  ∀ (inst : ABCInstance V C k),
+    (f inst).Nonempty ∧
+    ∀ W ∈ f inst, W.card = k ∧ W ⊆ inst.candidates
 
 -- ============================================================================
 -- RESOLUTENESS
@@ -39,15 +52,15 @@ def ABCRule.IsWellFormed {k : ℕ} (f : ABCRule V C k) : Prop :=
 /--
 An ABC rule is resolute if it always returns exactly one committee.
 -/
-def ABCRule.IsResolute {k : ℕ} (f : ABCRule V C k) : Prop :=
-  ∀ (inst : ABCInstance V C) (hk : inst.k = k), (f inst hk).card = 1
+def ABCRule.IsResolute (f : ABCRule V C k) : Prop :=
+  ∀ (inst : ABCInstance V C k), (f inst).card = 1
 
 /--
 A resolute rule is automatically well-formed in terms of returning non-empty sets.
 -/
-lemma ABCRule.resolute_nonempty {k : ℕ} (f : ABCRule V C k) (hres : f.IsResolute)
-    (inst : ABCInstance V C) (hk : inst.k = k) : (f inst hk).Nonempty := by
-  have h := hres inst hk
+lemma ABCRule.resolute_nonempty (f : ABCRule V C k) (hres : f.IsResolute)
+    (inst : ABCInstance V C k) : (f inst).Nonempty := by
+  have h := hres inst
   exact Finset.card_pos.mp (by omega)
 
 -- ============================================================================
@@ -57,28 +70,28 @@ lemma ABCRule.resolute_nonempty {k : ℕ} (f : ABCRule V C k) (hres : f.IsResolu
 /--
 For a resolute rule, extract the unique committee from the singleton set.
 -/
-noncomputable def ABCRule.resolute_committee {k : ℕ} (f : ABCRule V C k)
-    (inst : ABCInstance V C) (hk : inst.k = k) (hres : f.IsResolute) : Finset C :=
-  (f.resolute_nonempty hres inst hk).choose
+noncomputable def ABCRule.resolute_committee (f : ABCRule V C k)
+    (inst : ABCInstance V C k) (hres : f.IsResolute) : Finset C :=
+  (f.resolute_nonempty hres inst).choose
 
 /--
 The extracted committee is a member of the rule's output.
 -/
-lemma ABCRule.resolute_committee_mem {k : ℕ} (f : ABCRule V C k)
-    (inst : ABCInstance V C) (hk : inst.k = k) (hres : f.IsResolute) :
-    f.resolute_committee inst hk hres ∈ f inst hk :=
-  (f.resolute_nonempty hres inst hk).choose_spec
+lemma ABCRule.resolute_committee_mem (f : ABCRule V C k)
+    (inst : ABCInstance V C k) (hres : f.IsResolute) :
+    f.resolute_committee inst hres ∈ f inst :=
+  (f.resolute_nonempty hres inst).choose_spec
 
 /--
 The rule's output equals the singleton containing the extracted committee.
 -/
-lemma ABCRule.resolute_committee_spec {k : ℕ} (f : ABCRule V C k)
-    (inst : ABCInstance V C) (hk : inst.k = k) (hres : f.IsResolute) :
-    f inst hk = {f.resolute_committee inst hk hres} := by
-  have h := hres inst hk
+lemma ABCRule.resolute_committee_spec (f : ABCRule V C k)
+    (inst : ABCInstance V C k) (hres : f.IsResolute) :
+    f inst = {f.resolute_committee inst hres} := by
+  have h := hres inst
   rw [Finset.card_eq_one] at h
   obtain ⟨W, hW⟩ := h
-  have hmem : f.resolute_committee inst hk hres ∈ f inst hk := f.resolute_committee_mem inst hk hres
+  have hmem : f.resolute_committee inst hres ∈ f inst := f.resolute_committee_mem inst hres
   rw [hW] at hmem ⊢
   simp only [Finset.mem_singleton] at hmem
   exact congrArg _ hmem.symm
@@ -86,30 +99,30 @@ lemma ABCRule.resolute_committee_spec {k : ℕ} (f : ABCRule V C k)
 /--
 Membership in a resolute rule's output is equivalent to equality with the extracted committee.
 -/
-lemma ABCRule.mem_resolute_iff {k : ℕ} (f : ABCRule V C k)
-    (inst : ABCInstance V C) (hk : inst.k = k) (hres : f.IsResolute) (W : Finset C) :
-    W ∈ f inst hk ↔ W = f.resolute_committee inst hk hres := by
-  rw [f.resolute_committee_spec inst hk hres]
+lemma ABCRule.mem_resolute_iff (f : ABCRule V C k)
+    (inst : ABCInstance V C k) (hres : f.IsResolute) (W : Finset C) :
+    W ∈ f inst ↔ W = f.resolute_committee inst hres := by
+  rw [f.resolute_committee_spec inst hres]
   simp only [Finset.mem_singleton]
 
 /--
 If a property holds for all committees in a resolute rule's output,
 it holds for the extracted committee.
 -/
-lemma ABCRule.resolute_property {k : ℕ} (f : ABCRule V C k)
-    (inst : ABCInstance V C) (hk : inst.k = k) (hres : f.IsResolute) (P : Finset C → Prop)
-    (hP : ∀ W ∈ f inst hk, P W) :
-    P (f.resolute_committee inst hk hres) :=
-  hP _ (f.resolute_committee_mem inst hk hres)
+lemma ABCRule.resolute_property (f : ABCRule V C k)
+    (inst : ABCInstance V C k) (hres : f.IsResolute) (P : Finset C → Prop)
+    (hP : ∀ W ∈ f inst, P W) :
+    P (f.resolute_committee inst hres) :=
+  hP _ (f.resolute_committee_mem inst hres)
 
 /--
 Two committees from a resolute rule's output must be equal.
 -/
-lemma ABCRule.resolute_unique {k : ℕ} (f : ABCRule V C k)
-    (inst : ABCInstance V C) (hk : inst.k = k) (hres : f.IsResolute)
-    (W₁ W₂ : Finset C) (h₁ : W₁ ∈ f inst hk) (h₂ : W₂ ∈ f inst hk) :
+lemma ABCRule.resolute_unique (f : ABCRule V C k)
+    (inst : ABCInstance V C k) (hres : f.IsResolute)
+    (W₁ W₂ : Finset C) (h₁ : W₁ ∈ f inst) (h₂ : W₂ ∈ f inst) :
     W₁ = W₂ := by
-  rw [f.mem_resolute_iff inst hk hres] at h₁ h₂
+  rw [f.mem_resolute_iff inst hres] at h₁ h₂
   exact h₁.trans h₂.symm
 
 -- ============================================================================
@@ -121,27 +134,39 @@ A resolute ABC rule can be viewed as a function returning a single committee.
 This is the "unwrapped" version that returns Finset C directly.
 -/
 def ResoluteABCRule (V C : Type*) [DecidableEq V] [DecidableEq C] (k : ℕ) :=
-  (inst : ABCInstance V C) → inst.k = k → Finset C
+  (inst : ABCInstance V C k) → Finset C
 
 /--
 Convert a resolute ABCRule to a ResoluteABCRule.
 -/
-noncomputable def ABCRule.toResolute {k : ℕ} (f : ABCRule V C k) (hres : f.IsResolute) :
+noncomputable def ABCRule.toResolute (f : ABCRule V C k) (hres : f.IsResolute) :
     ResoluteABCRule V C k :=
-  fun inst hk => f.resolute_committee inst hk hres
+  fun inst => f.resolute_committee inst hres
 
 /--
 Convert a ResoluteABCRule to an ABCRule.
+Requires a proof that the resolute rule is extensional.
 -/
-def ResoluteABCRule.toABCRule {k : ℕ} (f : ResoluteABCRule V C k) : ABCRule V C k :=
-  fun inst hk => {f inst hk}
+def ResoluteABCRule.toABCRule (f : ResoluteABCRule V C k)
+    (hext : ∀ inst inst' : ABCInstance V C k,
+      inst.voters = inst'.voters →
+      inst.candidates = inst'.candidates →
+      (∀ v ∈ inst.voters, inst.approves v = inst'.approves v) →
+      f inst = f inst') : ABCRule V C k where
+  apply inst := {f inst}
+  extensional := fun inst inst' hv hc ha => by simp [hext inst inst' hv hc ha]
 
 /--
 A ResoluteABCRule converted to ABCRule is resolute.
 -/
-lemma ResoluteABCRule.toABCRule_isResolute {k : ℕ} (f : ResoluteABCRule V C k) :
-    f.toABCRule.IsResolute := by
-  intro inst hk
+lemma ResoluteABCRule.toABCRule_isResolute (f : ResoluteABCRule V C k)
+    (hext : ∀ inst inst' : ABCInstance V C k,
+      inst.voters = inst'.voters →
+      inst.candidates = inst'.candidates →
+      (∀ v ∈ inst.voters, inst.approves v = inst'.approves v) →
+      f inst = f inst') :
+    (f.toABCRule hext).IsResolute := by
+  intro inst
   simp [ResoluteABCRule.toABCRule]
 
 -- ============================================================================
@@ -149,38 +174,24 @@ lemma ResoluteABCRule.toABCRule_isResolute {k : ℕ} (f : ResoluteABCRule V C k)
 -- ============================================================================
 
 /--
-An ABC rule is ballot-extensional if it only depends on the approval ballots of voters,
-not on what `approves` returns for non-voters.
-
-This is a natural property: the rule should be determined by the actual ballots cast,
-not by arbitrary values for non-participants.
+For a resolute rule, if two instances have the same voters, candidates, and voter approvals,
+then the extracted committees are equal.
 -/
-def ABCRule.IsBallotExtensional {k : ℕ} (f : ABCRule V C k) : Prop :=
-  ∀ (inst inst' : ABCInstance V C) (hk : inst.k = k) (hk' : inst'.k = k),
-    inst.voters = inst'.voters →
-    inst.candidates = inst'.candidates →
-    (∀ v ∈ inst.voters, inst.approves v = inst'.approves v) →
-    f inst hk = f inst' hk'
-
-/--
-For a ballot-extensional resolute rule, the committee only depends on the ballots of voters.
--/
-lemma ABCRule.resolute_ballot_ext {k : ℕ} (f : ABCRule V C k)
-    (hext : f.IsBallotExtensional)
-    (inst inst' : ABCInstance V C) (hk : inst.k = k) (hk' : inst'.k = k)
+lemma ABCRule.resolute_ballot_ext (f : ABCRule V C k)
+    (inst inst' : ABCInstance V C k)
     (hres : f.IsResolute)
     (hv : inst.voters = inst'.voters)
     (hc : inst.candidates = inst'.candidates)
     (ha : ∀ v ∈ inst.voters, inst.approves v = inst'.approves v) :
-    f.resolute_committee inst hk hres = f.resolute_committee inst' hk' hres := by
-  have heq : f inst hk = f inst' hk' := hext inst inst' hk hk' hv hc ha
-  -- Both committees are the unique element of f inst hk = f inst' hk'
-  have h1 : f.resolute_committee inst hk hres ∈ f inst hk :=
-    f.resolute_committee_mem inst hk hres
-  have h2 : f.resolute_committee inst' hk' hres ∈ f inst' hk' :=
-    f.resolute_committee_mem inst' hk' hres
+    f.resolute_committee inst hres = f.resolute_committee inst' hres := by
+  have heq : f inst = f inst' := f.extensional inst inst' hv hc ha
+  -- Both committees are the unique element of f inst = f inst'
+  have h1 : f.resolute_committee inst hres ∈ f inst :=
+    f.resolute_committee_mem inst hres
+  have h2 : f.resolute_committee inst' hres ∈ f inst' :=
+    f.resolute_committee_mem inst' hres
   rw [heq] at h1
-  exact f.resolute_unique inst' hk' hres _ _ h1 h2
+  exact f.resolute_unique inst' hres _ _ h1 h2
 
 -- ============================================================================
 -- KEY LEMMA: COMMITTEE MEMBERSHIP WHEN m = k+1

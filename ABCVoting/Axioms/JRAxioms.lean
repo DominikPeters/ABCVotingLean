@@ -4,7 +4,7 @@ open Finset BigOperators
 
 namespace ABCInstance
 
-variable {V C : Type*} [DecidableEq V] [DecidableEq C]
+variable {V C : Type*} [DecidableEq V] [DecidableEq C] {k : ℕ}
 
 -- ============================================================================
 -- JUSTIFIED REPRESENTATION (JR) AXIOMS
@@ -25,7 +25,7 @@ If both conditions hold, then some voter in S must have utility ≥ ℓ.
 Note: We do not require W.card = k; any committee can satisfy EJR, and any completion
 of an EJR committee preserves EJR.
 -/
-def is_ejr (inst : ABCInstance V C) (W : Finset C) : Prop :=
+def is_ejr (inst : ABCInstance V C k) (W : Finset C) : Prop :=
   ∀ (S : Finset V) (l : ℕ),
     S ⊆ inst.voters →
     l ≥ 1 →
@@ -42,7 +42,7 @@ all voters in S approve c, then some voter in S must have utility ≥ ℓ.
 
 Note: Like EJR, we do not require W.card = k.
 -/
-def is_ejr_plus (inst : ABCInstance V C) (W : Finset C) : Prop :=
+def is_ejr_plus (inst : ABCInstance V C k) (W : Finset C) : Prop :=
   ∀ (S : Finset V) (l : ℕ),
     S ⊆ inst.voters →
     l ≥ 1 →

@@ -1,10 +1,10 @@
-import ABCVoting.Axioms.ABCRule
+import ABCVoting.ABCRule
 
 open Finset BigOperators
 
 namespace ABCInstance
 
-variable {V C : Type*} [DecidableEq V] [DecidableEq C]
+variable {V C : Type*} [DecidableEq V] [DecidableEq C] {k : ℕ}
 
 -- ============================================================================
 -- PARTY-LIST PROFILES
@@ -18,7 +18,7 @@ all members of a party approve exactly the same candidates.
 Example: (ab, ab, cde, cde, f) is party-list, but (ab, c, c, abc) is not
 (since ab and abc overlap but are not equal).
 -/
-def is_party_list (inst : ABCInstance V C) : Prop :=
+def is_party_list (inst : ABCInstance V C k) : Prop :=
   ∀ v₁ ∈ inst.voters, ∀ v₂ ∈ inst.voters,
     inst.approves v₁ = inst.approves v₂ ∨ Disjoint (inst.approves v₁) (inst.approves v₂)
 
@@ -26,7 +26,7 @@ def is_party_list (inst : ABCInstance V C) : Prop :=
 In a party-list profile, if two voters both approve some candidate c,
 then they have identical approval sets.
 -/
-lemma party_list_same_if_overlap (inst : ABCInstance V C) (hpl : inst.is_party_list)
+lemma party_list_same_if_overlap (inst : ABCInstance V C k) (hpl : inst.is_party_list)
     (v₁ v₂ : V) (hv₁ : v₁ ∈ inst.voters) (hv₂ : v₂ ∈ inst.voters) (c : C)
     (hc₁ : c ∈ inst.approves v₁) (hc₂ : c ∈ inst.approves v₂) :
     inst.approves v₁ = inst.approves v₂ := by
@@ -45,32 +45,32 @@ approval set is exactly {c}.
 
 This counts voters who approve ONLY candidate c (singleton ballots).
 -/
-def singleton_party_size (inst : ABCInstance V C) (c : C) : ℕ :=
+def singleton_party_size (inst : ABCInstance V C k) (c : C) : ℕ :=
   (inst.voters.filter (fun v => inst.approves v = {c})).card
 
 /--
 The voters in the singleton party for c (those whose ballot is exactly {c}).
 -/
-def singleton_party (inst : ABCInstance V C) (c : C) : Finset V :=
+def singleton_party (inst : ABCInstance V C k) (c : C) : Finset V :=
   inst.voters.filter (fun v => inst.approves v = {c})
 
 /--
 singleton_party_size equals the cardinality of singleton_party.
 -/
-lemma singleton_party_size_eq_card (inst : ABCInstance V C) (c : C) :
+lemma singleton_party_size_eq_card (inst : ABCInstance V C k) (c : C) :
     inst.singleton_party_size c = (inst.singleton_party c).card := rfl
 
 /--
 Members of a singleton party approve exactly {c}.
 -/
-lemma mem_singleton_party_iff (inst : ABCInstance V C) (c : C) (v : V) :
+lemma mem_singleton_party_iff (inst : ABCInstance V C k) (c : C) (v : V) :
     v ∈ inst.singleton_party c ↔ v ∈ inst.voters ∧ inst.approves v = {c} := by
   simp [singleton_party]
 
 /--
 Members of a singleton party approve c.
 -/
-lemma singleton_party_approves (inst : ABCInstance V C) (c : C) (v : V)
+lemma singleton_party_approves (inst : ABCInstance V C k) (c : C) (v : V)
     (hv : v ∈ inst.singleton_party c) : c ∈ inst.approves v := by
   rw [mem_singleton_party_iff] at hv
   rw [hv.2]
@@ -79,7 +79,7 @@ lemma singleton_party_approves (inst : ABCInstance V C) (c : C) (v : V)
 /--
 The singleton party for c is a subset of the supporters of c.
 -/
-lemma singleton_party_subset_supporters (inst : ABCInstance V C) (c : C) :
+lemma singleton_party_subset_supporters (inst : ABCInstance V C k) (c : C) :
     inst.singleton_party c ⊆ inst.supporters c := by
   intro v hv
   rw [mem_singleton_party_iff] at hv
@@ -103,25 +103,25 @@ that have sufficient support.
 Note: The party-list condition allows non-singleton parties, but proportionality
 only guarantees representation for singleton parties with sufficient support.
 -/
-def ABCRule.SatisfiesProportionality {k : ℕ} (f : ABCRule V C k) : Prop :=
-  ∀ (inst : ABCInstance V C) (hk : inst.k = k) (c : C),
+def ABCRule.SatisfiesProportionality (f : ABCRule V C k) : Prop :=
+  ∀ (inst : ABCInstance V C k) (c : C),
     inst.is_party_list →
     c ∈ inst.candidates →
     inst.singleton_party_size c * k ≥ inst.voters.card →
-    ∀ W ∈ f inst hk, c ∈ W
+    ∀ W ∈ f inst, c ∈ W
 
 /--
 For a resolute rule satisfying proportionality, on party-list profiles,
 sufficiently large singleton parties get their candidate in the committee.
 -/
-lemma ABCRule.resolute_proportionality {k : ℕ} (f : ABCRule V C k)
+lemma ABCRule.resolute_proportionality (f : ABCRule V C k)
     (hres : f.IsResolute) (hprop : f.SatisfiesProportionality)
-    (inst : ABCInstance V C) (hk : inst.k = k) (c : C)
+    (inst : ABCInstance V C k) (c : C)
     (hpl : inst.is_party_list)
     (hc_cand : c ∈ inst.candidates)
     (h_size : inst.singleton_party_size c * k ≥ inst.voters.card) :
-    c ∈ f.resolute_committee inst hk hres :=
-  hprop inst hk c hpl hc_cand h_size _ (f.resolute_committee_mem inst hk hres)
+    c ∈ f.resolute_committee inst hres :=
+  hprop inst c hpl hc_cand h_size _ (f.resolute_committee_mem inst hres)
 
 -- ============================================================================
 -- QUOTA CALCULATIONS
@@ -134,24 +134,24 @@ A singleton party of size ≥ n/k satisfies the proportionality threshold.
 Note: With floor division, size ≥ ⌊n/k⌋ only gives size * k ≥ n - (k-1).
 This lemma is only useful when combined with divisibility or ceiling bounds.
 -/
-lemma singleton_party_threshold_of_ge_quota (inst : ABCInstance V C) (c : C)
-    (h : inst.singleton_party_size c ≥ inst.voters.card / inst.k) :
-    inst.singleton_party_size c * inst.k ≥ inst.voters.card - inst.voters.card % inst.k := by
-  calc inst.singleton_party_size c * inst.k
-      ≥ (inst.voters.card / inst.k) * inst.k := Nat.mul_le_mul_right _ h
-    _ = inst.voters.card - inst.voters.card % inst.k := Nat.div_mul_self_eq_mod_sub_self
+lemma singleton_party_threshold_of_ge_quota (inst : ABCInstance V C k) (c : C)
+    (h : inst.singleton_party_size c ≥ inst.voters.card / k) :
+    inst.singleton_party_size c * k ≥ inst.voters.card - inst.voters.card % k := by
+  calc inst.singleton_party_size c * k
+      ≥ (inst.voters.card / k) * k := Nat.mul_le_mul_right _ h
+    _ = inst.voters.card - inst.voters.card % k := Nat.div_mul_self_eq_mod_sub_self
 
 /--
 When k divides n, singleton_party_size c ≥ n/k implies the threshold exactly.
 -/
-lemma singleton_party_threshold_of_div (inst : ABCInstance V C) (c : C)
-    (hdiv : inst.k ∣ inst.voters.card)
-    (h : inst.singleton_party_size c ≥ inst.voters.card / inst.k) :
-    inst.singleton_party_size c * inst.k ≥ inst.voters.card := by
-  have : inst.voters.card / inst.k * inst.k = inst.voters.card :=
+lemma singleton_party_threshold_of_div (inst : ABCInstance V C k) (c : C)
+    (hdiv : k ∣ inst.voters.card)
+    (h : inst.singleton_party_size c ≥ inst.voters.card / k) :
+    inst.singleton_party_size c * k ≥ inst.voters.card := by
+  have : inst.voters.card / k * k = inst.voters.card :=
     Nat.div_mul_cancel hdiv
-  calc inst.singleton_party_size c * inst.k
-      ≥ (inst.voters.card / inst.k) * inst.k := Nat.mul_le_mul_right _ h
+  calc inst.singleton_party_size c * k
+      ≥ (inst.voters.card / k) * k := Nat.mul_le_mul_right _ h
     _ = inst.voters.card := this
 
 end ABCInstance

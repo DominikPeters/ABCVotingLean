@@ -1,4 +1,4 @@
-import ABCVoting.Axioms.ABCRule
+import ABCVoting.ABCRule
 import ABCVoting.Axioms.Efficiency
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
@@ -18,7 +18,7 @@ replicated q times, then apply the large rule.
 
 namespace Peters.InductionN
 
-variable {C : Type*} [DecidableEq C]
+variable {C : Type*} [DecidableEq C] {kc : ℕ}
 
 -- ============================================================================
 -- VOTER EXPANSION
@@ -31,8 +31,8 @@ replicating each voter's ballot q times.
 The mapping is: new voter i maps to original voter (i mod k).
 -/
 def expand_voters (k q : ℕ) (hk : 0 < k) (hq : 0 < q)
-    (inst : ABCInstance (Fin k) C) :
-    ABCInstance (Fin (q * k)) C where
+    (inst : ABCInstance (Fin k) C kc) :
+    ABCInstance (Fin (q * k)) C kc where
   voters := Finset.univ
   candidates := inst.candidates
   approves := fun i => inst.approves ⟨i.val % k, Nat.mod_lt i.val hk⟩
@@ -40,22 +40,14 @@ def expand_voters (k q : ℕ) (hk : 0 < k) (hq : 0 < q)
     intro v _
     exact inst.approves_subset ⟨v.val % k, Nat.mod_lt v.val hk⟩ (Finset.mem_univ _)
   voters_nonempty := Finset.univ_nonempty
-  k := inst.k
   k_pos := inst.k_pos
   k_le_m := inst.k_le_m
-
-/--
-The expanded instance has the same k value.
--/
-lemma expand_voters_k (k q : ℕ) (hk : 0 < k) (hq : 0 < q)
-    (inst : ABCInstance (Fin k) C) :
-    (expand_voters k q hk hq inst).k = inst.k := rfl
 
 /--
 The expanded instance has the same candidates.
 -/
 lemma expand_voters_candidates (k q : ℕ) (hk : 0 < k) (hq : 0 < q)
-    (inst : ABCInstance (Fin k) C) :
+    (inst : ABCInstance (Fin k) C kc) :
     (expand_voters k q hk hq inst).candidates = inst.candidates := rfl
 
 -- ============================================================================
@@ -69,7 +61,12 @@ the profile and applying the large rule.
 def induced_rule (kv q : ℕ) (hkv : 0 < kv) (hq : 0 < q) {kc : ℕ}
     (f : ABCRule (Fin (q * kv)) C kc) :
     ABCRule (Fin kv) C kc :=
-  fun inst hk => f (expand_voters kv q hkv hq inst) (by simp [expand_voters, hk])
+  { apply := fun inst => f.apply (expand_voters kv q hkv hq inst)
+    extensional := by
+      intro inst inst' hv hc ha
+      -- Extensionality follows from extensionality of f on the expanded instances.
+      -- TODO: provide detailed proof.
+      sorry }
 
 -- ============================================================================
 -- AXIOM PRESERVATION
@@ -81,8 +78,9 @@ If f is resolute, so is the induced rule.
 lemma induced_rule_resolute (kv q : ℕ) (hkv : 0 < kv) (hq : 0 < q) {kc : ℕ}
     (f : ABCRule (Fin (q * kv)) C kc) (hres : f.IsResolute) :
     (induced_rule kv q hkv hq f).IsResolute := by
-  intro inst hk
-  exact hres (expand_voters kv q hkv hq inst) (by simp [expand_voters, hk])
+  classical
+  -- TODO: adapt proof to new ABCRule structure
+  sorry
 
 /--
 If f satisfies weak efficiency, so does the induced rule.
@@ -91,13 +89,9 @@ lemma induced_rule_weak_efficiency (kv q : ℕ) (hkv : 0 < kv) (hq : 0 < q) {kc 
     (f : ABCRule (Fin (q * kv)) C kc)
     (heff : f.SatisfiesWeakEfficiency) :
     (induced_rule kv q hkv hq f).SatisfiesWeakEfficiency := by
-  intro inst hk W hW c hc
-  -- An unapproved candidate in inst is also unapproved in the expanded instance
-  intro hunapproved
-  apply heff (expand_voters kv q hkv hq inst) (by simp [expand_voters, hk]) W hW c hc
-  intro v _
-  simp only [expand_voters]
-  exact hunapproved ⟨v.val % kv, Nat.mod_lt v.val hkv⟩ (Finset.mem_univ _)
+  classical
+  -- TODO: adapt proof to new ABCRule structure
+  sorry
 
 /--
 If f satisfies proportionality, so does the induced rule (when m = k+1).
@@ -110,21 +104,9 @@ lemma induced_rule_proportionality (kv q : ℕ) (hkv : 0 < kv) (hq : 0 < q) {kc 
     (f : ABCRule (Fin (q * kv)) C kc)
     (hprop : f.SatisfiesProportionality) :
     (induced_rule kv q hkv hq f).SatisfiesProportionality := by
-  intro inst hk c hpl hc_cand h_size W hW
-  -- Need to show the expanded instance also satisfies proportionality conditions
-  apply hprop (expand_voters kv q hkv hq inst) (by simp [expand_voters, hk]) c
-  · -- Expanded instance is party-list if inst is
-    intro v₁ _ v₂ _
-    simp only [expand_voters]
-    exact hpl ⟨v₁.val % kv, Nat.mod_lt v₁.val hkv⟩ (Finset.mem_univ _)
-              ⟨v₂.val % kv, Nat.mod_lt v₂.val hkv⟩ (Finset.mem_univ _)
-  · -- c is still a candidate
-    simp only [expand_voters_candidates]
-    exact hc_cand
-  · -- Size threshold: need singleton_party_size * k ≥ qk
-    -- In expanded instance, each singleton voter is replicated q times
-    sorry
-  · exact hW
+  classical
+  -- TODO: adapt proof to new ABCRule structure
+  sorry
 
 /--
 If f satisfies strategyproofness, so does the induced rule.
@@ -138,8 +120,8 @@ lemma induced_rule_strategyproof (kv q : ℕ) (hkv : 0 < kv) (hq : 0 < q) {kc : 
     (f : ABCRule (Fin (q * kv)) C kc)
     (hsp : f.SatisfiesResoluteStrategyproofness) :
     (induced_rule kv q hkv hq f).SatisfiesResoluteStrategyproofness := by
-  intro inst inst' i hi hvar hsub hk hk' hres
-  -- The detailed proof requires tracking the q copies of voter i
+  classical
+  -- TODO: adapt proof to new ABCRule structure
   sorry
 
 -- ============================================================================

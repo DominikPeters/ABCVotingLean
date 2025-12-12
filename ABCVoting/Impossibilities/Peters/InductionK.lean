@@ -1,4 +1,4 @@
-import ABCVoting.Axioms.ABCRule
+import ABCVoting.ABCRule
 import ABCVoting.Axioms.Efficiency
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
@@ -59,9 +59,8 @@ create an instance with k+1 voters and k+2 candidates (committee size k+1).
 
 The new voter (dummy) approves only the new candidate (dummy).
 -/
-def extend_instance (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)))
-    (hk_inst : inst.k = k) :
-    ABCInstance (Fin (k + 1)) (Fin (k + 2)) where
+def extend_instance (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
+    ABCInstance (Fin (k + 1)) (Fin (k + 2)) (k + 1) where
   voters := Finset.univ
   candidates := Finset.univ
   approves := fun v =>
@@ -78,24 +77,15 @@ def extend_instance (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)))
     intro v _
     exact Finset.subset_univ _
   voters_nonempty := Finset.univ_nonempty
-  k := k + 1
   k_pos := Nat.succ_pos k
   k_le_m := by simp [Finset.card_fin]
-
-/--
-The extended instance has committee size k+1.
--/
-lemma extend_instance_k (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)))
-    (hk_inst : inst.k = k) :
-    (extend_instance k inst hk_inst).k = k + 1 := rfl
 
 /--
 The dummy candidate is approved only by the dummy voter.
 This means its singleton party has size 1, which equals (k+1)/(k+1) = 1.
 -/
-lemma dummy_singleton_party (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)))
-    (hk_inst : inst.k = k) :
-    (extend_instance k inst hk_inst).singleton_party (dummy_candidate k) =
+lemma dummy_singleton_party (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
+    (extend_instance k inst).singleton_party (dummy_candidate k) =
     {dummy_voter k} := by
   ext v
   simp only [singleton_party, mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]
@@ -139,11 +129,10 @@ noncomputable def induced_rule (k : ℕ)
     (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality)
     (hsp : f.SatisfiesResoluteStrategyproofness) :
-    ABCRule (Fin k) (Fin (k + 1)) k :=
-  fun inst hk =>
-    let ext_inst := extend_instance k inst hk
-    let hk_ext : ext_inst.k = k + 1 := by simp [extend_instance]
-    let W := f.resolute_committee ext_inst hk_ext hres
+    ABCRule (Fin k) (Fin (k + 1)) k where
+  apply inst :=
+    let ext_inst := extend_instance k inst
+    let W := f.resolute_committee ext_inst hres
     -- Remove dummy candidate and map back to Fin (k+1)
     {W.filterMap (fun c =>
       if h : c.val < k + 1 then some ⟨c.val, h⟩ else none) (by
@@ -153,6 +142,12 @@ noncomputable def induced_rule (k : ℕ)
         · simp only [Option.some.injEq, Fin.mk.injEq] at hc1 hc2
           exact Fin.ext (hc1 ▸ hc2)
         all_goals simp_all)}
+  extensional := by
+    intro inst inst' hv hc ha
+    -- Extensionality follows from extensionality of f on the extended instances.
+    -- The construction of committees only depends on the extended instances.
+    -- TODO: fill in detailed equality proof.
+    sorry
 
 -- ============================================================================
 -- MAIN INDUCTION LEMMA

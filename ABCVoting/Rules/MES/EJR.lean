@@ -5,7 +5,7 @@ open Finset BigOperators
 
 namespace ABCInstance
 
-variable {V C : Type*} [DecidableEq V] [DecidableEq C]
+variable {V C : Type*} [DecidableEq V] [DecidableEq C] {k : ℕ}
 
 -- ============================================================================
 -- LEMMAS ABOUT BUDGET EVOLUTION
@@ -13,7 +13,7 @@ variable {V C : Type*} [DecidableEq V] [DecidableEq C]
 
 section BudgetEvolution
 
-variable (inst : ABCInstance V C) (w : MESWitness V C inst)
+variable (inst : ABCInstance V C k) (w : MESWitness V C inst)
 
 -- Committee equals the image of selected over all rounds
 lemma committee_eq_image :
@@ -89,7 +89,7 @@ end BudgetEvolution
 
 section EJRProof
 
-variable {inst : ABCInstance V C}
+variable {inst : ABCInstance V C k}
 
 -- First, we need to track what a voter paid in total
 def total_paid (w : MESWitness V C inst) (i : V) : ℚ :=
@@ -395,13 +395,13 @@ lemma final_budget_nonneg (w : MESWitness V C inst) (i : V) (hi : i ∈ inst.vot
 lemma l_large_card_ge_price (S : Finset V) (ℓ : ℕ) (hℓ_pos : 0 < ℓ)
     (hS_large : inst.is_l_large S ℓ) : S.card * (1 / ℓ : ℚ) ≥ inst.price := by
   unfold price is_l_large at *
-  have hk_pos : (inst.k : ℚ) > 0 := Nat.cast_pos.mpr inst.k_pos
+  have hk_pos : (k : ℚ) > 0 := Nat.cast_pos.mpr inst.k_pos
   have hℓ_pos' : (ℓ : ℚ) > 0 := Nat.cast_pos.mpr hℓ_pos
   calc S.card * (1 / ℓ : ℚ) = (S.card : ℚ) / ℓ := by ring
-    _ ≥ inst.voters.card / inst.k := by
-        have h1 : (inst.voters.card : ℚ) * ℓ ≤ S.card * inst.k := by
+    _ ≥ inst.voters.card / k := by
+        have h1 : (inst.voters.card : ℚ) * ℓ ≤ S.card * k := by
           calc (inst.voters.card : ℚ) * ℓ = ℓ * inst.voters.card := by ring
-            _ ≤ S.card * inst.k := by exact_mod_cast hS_large
+            _ ≤ S.card * k := by exact_mod_cast hS_large
         field_simp
         linarith
 
@@ -532,7 +532,7 @@ has fewer than ℓ representatives in W.
 5. Since |S| ≥ ℓn/k, we have |S|·(1/ℓ) ≥ n/k = p.
    So a commonly-approved candidate is (1/ℓ)-affordable, contradiction.
 -/
-theorem mes_satisfies_ejr (inst : ABCInstance V C) (W : Finset C)
+theorem mes_satisfies_ejr (inst : ABCInstance V C k) (W : Finset C)
     (h_mes : inst.is_mes_outcome W) : inst.is_ejr W := by
   obtain ⟨w, hw⟩ := h_mes
   -- EJR property: for every ℓ-cohesive group S, some voter has ≥ ℓ representatives

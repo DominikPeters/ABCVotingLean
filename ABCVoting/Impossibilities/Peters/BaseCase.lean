@@ -1,4 +1,4 @@
-import ABCVoting.Axioms.ABCRule
+import ABCVoting.ABCRule
 import ABCVoting.Axioms.Efficiency
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness

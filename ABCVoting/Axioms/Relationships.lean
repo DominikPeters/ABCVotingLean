@@ -4,7 +4,7 @@ open Finset BigOperators
 
 namespace ABCInstance
 
-variable {V C : Type*} [DecidableEq V] [DecidableEq C]
+variable {V C : Type*} [DecidableEq V] [DecidableEq C] {k : ℕ}
 
 -- ============================================================================
 -- IMPLICATIONS BETWEEN AXIOMS
@@ -20,7 +20,7 @@ Suppose W satisfies EJR+ and S is ℓ-cohesive.
 - Otherwise, some common approval c is not in W. Since S is ℓ-large and all voters
   in S approve c, EJR+ applies and gives us a voter with ≥ ℓ approved candidates.
 -/
-theorem ejr_plus_implies_ejr (inst : ABCInstance V C) (W : Finset C) :
+theorem ejr_plus_implies_ejr (inst : ABCInstance V C k) (W : Finset C) :
     inst.is_ejr_plus W → inst.is_ejr W := by
   intro h_ejr_plus
   intro S l h_S_subset hl_pos ⟨h_large, h_common⟩

@@ -5,7 +5,7 @@ open Finset BigOperators
 
 namespace ABCInstance
 
-variable {V C : Type*} [DecidableEq V] [DecidableEq C]
+variable {V C : Type*} [DecidableEq V] [DecidableEq C] {k : ℕ}
 
 -- ============================================================================
 -- BASIC DEFINITIONS
@@ -21,7 +21,7 @@ abbrev RhoValue := WithTop ℚ
 Price per candidate: n/k, where n is the number of voters and k is the committee size.
 This is the total cost that must be covered by supporters of a candidate.
 -/
-def price (inst : ABCInstance V C) : ℚ := inst.voters.card / inst.k
+def price (inst : ABCInstance V C k) : ℚ := inst.voters.card / k
 
 /--
 Total remaining budget of a candidate's supporters.
@@ -29,7 +29,7 @@ Total remaining budget of a candidate's supporters.
 Given a budget function (tracking each voter's remaining budget),
 this sums the budgets of all voters who support the candidate.
 -/
-def supporter_budget (inst : ABCInstance V C) (budgets : V → ℚ) (c : C) : ℚ :=
+def supporter_budget (inst : ABCInstance V C k) (budgets : V → ℚ) (c : C) : ℚ :=
   ∑ i ∈ inst.supporters c, budgets i
 
 -- ============================================================================
@@ -53,7 +53,7 @@ The round satisfies:
 4. Budgets evolve correctly: supporters pay min(ρ, budget), others pay nothing
 -/
 structure MESRound (V C : Type*) [DecidableEq V] [DecidableEq C]
-    (inst : ABCInstance V C) where
+    (inst : ABCInstance V C k) where
   -- Budgets at start and end of this round
   start_budgets : V → ℚ
   end_budgets : V → ℚ
@@ -121,7 +121,7 @@ an MES outcome, and to prove properties about MES outcomes without implementing
 the algorithm itself.
 -/
 structure MESWitness (V C : Type*) [DecidableEq V] [DecidableEq C]
-    (inst : ABCInstance V C) where
+    (inst : ABCInstance V C k) where
   -- Number of rounds (= committee size)
   num_rounds : ℕ
 
@@ -175,7 +175,7 @@ structure MESWitness (V C : Type*) [DecidableEq V] [DecidableEq C]
 -- MES OUTCOME DEFINITION
 -- ============================================================================
 
-variable (inst : ABCInstance V C) in
+variable (inst : ABCInstance V C k) in
 /--
 The resulting committee from an MES witness.
 
@@ -190,7 +190,7 @@ there exists a valid witness w such that w.committee = W.
 
 This allows us to reason about MES outcomes without implementing the algorithm.
 -/
-def is_mes_outcome (inst : ABCInstance V C) (W : Finset C) : Prop :=
+def is_mes_outcome (inst : ABCInstance V C k) (W : Finset C) : Prop :=
   ∃ w : MESWitness V C inst, w.committee = W
 
 -- ============================================================================

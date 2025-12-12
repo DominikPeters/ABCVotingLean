@@ -5,7 +5,7 @@ open Finset BigOperators
 
 namespace ABCInstance
 
-variable {V C : Type*} [DecidableEq V] [DecidableEq C]
+variable {V C : Type*} [DecidableEq V] [DecidableEq C] {k : ℕ}
 
 -- ============================================================================
 -- PAV SATISFIES EJR+
@@ -17,7 +17,7 @@ Score contribution from adding a candidate c to committee W for voter i.
 If i approves c: gain is 1/(u_i(W) + 1), otherwise 0
 where u_i(W) = |W ∩ approves_i| is voter i's utility for W.
 -/
-lemma score_gain_voter (inst : ABCInstance V C) (W : Finset C) (c : C) (i : V)
+lemma score_gain_voter (inst : ABCInstance V C k) (W : Finset C) (c : C) (i : V)
     (hc : c ∉ W) :
     harmonic ((W ∪ {c}) ∩ inst.approves i).card - harmonic (W ∩ inst.approves i).card =
     if c ∈ inst.approves i then 1 / ((W ∩ inst.approves i).card + 1 : ℚ) else 0 := by
@@ -48,7 +48,7 @@ lemma score_gain_voter (inst : ABCInstance V C) (W : Finset C) (c : C) (i : V)
 /--
 PAV score change when adding a candidate c to committee W.
 -/
-lemma pav_score_add_candidate (inst : ABCInstance V C) (W : Finset C) (c : C)
+lemma pav_score_add_candidate (inst : ABCInstance V C k) (W : Finset C) (c : C)
     (hc : c ∉ W) :
     inst.pav_score (W ∪ {c}) - inst.pav_score W =
     ∑ i ∈ inst.voters.filter (fun i => c ∈ inst.approves i),
@@ -66,7 +66,7 @@ Score contribution from removing a candidate c from committee W for voter i.
 
 If i approves c: loss is 1/u_i(W), otherwise 0.
 -/
-lemma score_loss_voter (inst : ABCInstance V C) (W : Finset C) (c : C) (i : V)
+lemma score_loss_voter (inst : ABCInstance V C k) (W : Finset C) (c : C) (i : V)
     (hc : c ∈ W) :
     harmonic (W ∩ inst.approves i).card - harmonic ((W \ {c}) ∩ inst.approves i).card =
     if c ∈ inst.approves i then 1 / ((W ∩ inst.approves i).card : ℚ) else 0 := by
@@ -100,7 +100,7 @@ lemma score_loss_voter (inst : ABCInstance V C) (W : Finset C) (c : C) (i : V)
 /--
 PAV score change when removing a candidate c from committee W.
 -/
-lemma pav_score_remove_candidate (inst : ABCInstance V C) (W : Finset C) (c : C)
+lemma pav_score_remove_candidate (inst : ABCInstance V C k) (W : Finset C) (c : C)
     (hc : c ∈ W) :
     inst.pav_score W - inst.pav_score (W \ {c}) =
     ∑ i ∈ inst.voters.filter (fun i => c ∈ inst.approves i),
@@ -118,7 +118,7 @@ Sum of removal costs over all candidates equals the number of voters with positi
 
 ∑_{c ∈ W} ∑_{i : c ∈ A_i} 1/u_i(W) = ∑_{i ∈ N} ∑_{c ∈ A_i ∩ W} 1/u_i(W) = #{i ∈ N : u_i(W) > 0}
 -/
-lemma sum_removal_costs (inst : ABCInstance V C) (W : Finset C) :
+lemma sum_removal_costs (inst : ABCInstance V C k) (W : Finset C) :
     ∑ c ∈ W, ∑ i ∈ inst.voters.filter (fun i => c ∈ inst.approves i),
       1 / ((W ∩ inst.approves i).card : ℚ) =
     (inst.voters.filter (fun i => (W ∩ inst.approves i).Nonempty)).card := by
@@ -147,7 +147,7 @@ lemma sum_removal_costs (inst : ABCInstance V C) (W : Finset C) :
 /--
 Corollary: The sum of removal costs is at most the number of voters.
 -/
-lemma sum_removal_costs_le_voters (inst : ABCInstance V C) (W : Finset C) :
+lemma sum_removal_costs_le_voters (inst : ABCInstance V C k) (W : Finset C) :
     ∑ c ∈ W, ∑ i ∈ inst.voters.filter (fun i => c ∈ inst.approves i),
       1 / ((W ∩ inst.approves i).card : ℚ) ≤ inst.voters.card := by
   rw [sum_removal_costs]
@@ -159,7 +159,7 @@ all approves it and all have utility < ℓ so far.
 
 This is a key technical lemma for the EJR+ proof.
 -/
-lemma score_gain_lower_bound (inst : ABCInstance V C) (W : Finset C) (c : C) (S : Finset V)
+lemma score_gain_lower_bound (inst : ABCInstance V C k) (W : Finset C) (c : C) (S : Finset V)
     (l : ℕ) (hl : 1 ≤ l)
     (hc : c ∉ W)
     (hS_sub : S ⊆ inst.voters)
@@ -204,7 +204,7 @@ Assume for contradiction that every voter in S has utility < ℓ in W.
 
 4. This contradicts W being a PAV winner (which requires pav_score(W') ≤ pav_score(W)).
 -/
-theorem pav_winner_satisfies_ejr_plus (inst : ABCInstance V C) (W : Finset C)
+theorem pav_winner_satisfies_ejr_plus (inst : ABCInstance V C k) (W : Finset C)
     (h_winner : inst.is_pav_winner W) : inst.is_ejr_plus W := by
   obtain ⟨h_card, h_max⟩ := h_winner
   intro S l hS_sub hl ⟨h_large, c, hc_cand, hS_approves⟩
@@ -217,20 +217,20 @@ theorem pav_winner_satisfies_ejr_plus (inst : ABCInstance V C) (W : Finset C)
   have h_gain : (S.card : ℚ) / l ≤ inst.pav_score W' - inst.pav_score W :=
     score_gain_lower_bound inst W c S l hl hc_not_in_W hS_sub hS_approves h_neg
 
-  have h_large_ineq : (inst.voters.card : ℚ) / inst.k ≤ (S.card : ℚ) / l := by
+  have h_large_ineq : (inst.voters.card : ℚ) / k ≤ (S.card : ℚ) / l := by
     unfold is_l_large at h_large
-    have hk_pos : (0 : ℚ) < inst.k := Nat.cast_pos.mpr inst.k_pos
+    have hk_pos : (0 : ℚ) < k := Nat.cast_pos.mpr inst.k_pos
     have hl_pos : (0 : ℚ) < l := Nat.cast_pos.mpr hl
     field_simp
     calc (inst.voters.card : ℚ) * l = l * inst.voters.card := by ring
-      _ ≤ S.card * inst.k := by exact_mod_cast h_large
-      _ = inst.k * S.card := by ring
+      _ ≤ S.card * k := by exact_mod_cast h_large
+      _ = k * S.card := by ring
 
-  have h_gain' : (inst.voters.card : ℚ) / inst.k ≤ inst.pav_score W' - inst.pav_score W :=
+  have h_gain' : (inst.voters.card : ℚ) / k ≤ inst.pav_score W' - inst.pav_score W :=
     le_trans h_large_ineq h_gain
 
   -- Step 2: Sum of removal costs over W' is ≤ n
-  have h_W'_card : W'.card = inst.k + 1 := by
+  have h_W'_card : W'.card = k + 1 := by
     simp only [W', union_singleton, card_insert_of_notMem hc_not_in_W, h_card]
 
   have h_sum_le : ∑ c' ∈ W', ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
@@ -240,20 +240,20 @@ theorem pav_winner_satisfies_ejr_plus (inst : ABCInstance V C) (W : Finset C)
   -- Step 3: By pigeonhole, ∃ c† with removal cost < n/(k+1) < n/k
   have h_exists_small : ∃ c' ∈ W',
       ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
-        1 / ((W' ∩ inst.approves i).card : ℚ) < (inst.voters.card : ℚ) / inst.k := by
+        1 / ((W' ∩ inst.approves i).card : ℚ) < (inst.voters.card : ℚ) / k := by
     by_contra h_all_large
     push_neg at h_all_large
-    have h_sum_ge : (inst.k + 1) * ((inst.voters.card : ℚ) / inst.k) ≤
+    have h_sum_ge : (k + 1) * ((inst.voters.card : ℚ) / k) ≤
         ∑ c' ∈ W', ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
           1 / ((W' ∩ inst.approves i).card : ℚ) := by
-      calc (inst.k + 1) * ((inst.voters.card : ℚ) / inst.k)
-          = ∑ _ ∈ W', (inst.voters.card : ℚ) / inst.k := by
+      calc (k + 1) * ((inst.voters.card : ℚ) / k)
+          = ∑ _ ∈ W', (inst.voters.card : ℚ) / k := by
             simp only [Finset.sum_const, h_W'_card, nsmul_eq_mul, Nat.cast_add, Nat.cast_one]
         _ ≤ ∑ c' ∈ W', ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
               1 / ((W' ∩ inst.approves i).card : ℚ) :=
             Finset.sum_le_sum (fun c' hc' => h_all_large c' hc')
-    have h_arith : (inst.voters.card : ℚ) < (inst.k + 1) * ((inst.voters.card : ℚ) / inst.k) := by
-      have hk_pos : (0 : ℚ) < inst.k := Nat.cast_pos.mpr inst.k_pos
+    have h_arith : (inst.voters.card : ℚ) < (k + 1) * ((inst.voters.card : ℚ) / k) := by
+      have hk_pos : (0 : ℚ) < k := Nat.cast_pos.mpr inst.k_pos
       have hn_pos : (0 : ℚ) < inst.voters.card :=
         Nat.cast_pos.mpr (card_pos.mpr inst.voters_nonempty)
       field_simp
@@ -264,7 +264,7 @@ theorem pav_winner_satisfies_ejr_plus (inst : ABCInstance V C) (W : Finset C)
 
   -- Step 4: W' \ {c'} has size k and higher PAV score than W
   have hc'_in : c' ∈ W' := hc'_in_W'
-  have h_size : (W' \ {c'}).card = inst.k := by
+  have h_size : (W' \ {c'}).card = k := by
     simp only [card_sdiff, card_singleton, h_W'_card, singleton_inter_of_mem hc'_in]
     omega
 
@@ -277,7 +277,7 @@ theorem pav_winner_satisfies_ejr_plus (inst : ABCInstance V C) (W : Finset C)
   have h_better : inst.pav_score W < inst.pav_score (W' \ {c'}) := by
     calc inst.pav_score W
         = inst.pav_score W' - (inst.pav_score W' - inst.pav_score W) := by ring
-      _ ≤ inst.pav_score W' - (inst.voters.card : ℚ) / inst.k := by linarith
+      _ ≤ inst.pav_score W' - (inst.voters.card : ℚ) / k := by linarith
       _ < inst.pav_score W' - ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
             1 / ((W' ∩ inst.approves i).card : ℚ) := by linarith
       _ = inst.pav_score (W' \ {c'}) := by linarith
