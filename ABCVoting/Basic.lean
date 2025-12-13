@@ -63,6 +63,12 @@ def common_approvals (inst : ABCInstance V C k) (S : Finset V) : Finset C :=
   inst.candidates.filter fun c => ∀ v ∈ S, c ∈ inst.approves v
 
 /--
+The union of all candidates approved by any voter in a group S.
+-/
+def union_approvals (inst : ABCInstance V C k) (S : Finset V) : Finset C :=
+  S.biUnion inst.approves
+
+/--
 A group S is ℓ-large if it contains at least ℓn/k voters.
 Formally: ℓ * |voters| ≤ |S| * k
 -/
