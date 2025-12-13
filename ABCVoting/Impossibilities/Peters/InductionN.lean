@@ -1,4 +1,5 @@
 import Mathlib.Logic.Equiv.Fin.Basic
+import Mathlib.Data.Finset.Card
 
 import ABCVoting.ABCRule
 import ABCVoting.Axioms.Efficiency
@@ -596,6 +597,180 @@ theorem induction_n (k q : ℕ)
       f'.SatisfiesWeakEfficiency ∧
       f'.SatisfiesProportionality ∧
       Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f' := by
-    sorry
+  have hq_pos : 0 < q := by linarith
+  let f' := induced_rule k q hq_pos f
+  use f'
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · exact induced_rule_wellFormed k q hq_pos f hwf
+  · exact induced_rule_resolute k q hq_pos f hres
+  · exact induced_rule_weak_efficiency k q hq_pos f heff
+  · exact induced_rule_proportionality k q hq_pos f hprop
+  · -- Strategyproofness proof
+    intro inst inst' i hpl hpl' hi hvar hsub hres' hgain
+    -- hgain: f'(inst') ∩ A ⊃ f'(inst) ∩ A
+    -- We derive a contradiction by showing card (f'(inst') ∩ A) ≤ card (f'(inst) ∩ A)
+    let A := inst.approves i
+
+    -- Helper lemma: strict superset of intersections implies strictly larger cardinality
+    -- when sets have size k in Fin (k+1)
+    have h_card_gain : (f'.resolute_committee inst' hres' ∩ A).card > (f'.resolute_committee inst hres' ∩ A).card :=
+      Finset.card_lt_card hgain
+
+    -- Define the score along the chain: s(t) = card (f(chain_t) ∩ A)
+    let chain (t : ℕ) := chain_instance k q hq_pos inst inst' i hvar t
+    let s (t : ℕ) := (f.resolute_committee (chain t) hres ∩ A).card
+
+    -- We show s(t+1) ≤ s(t) for all t < q
+    have h_step : ∀ t, t < q → s (t + 1) ≤ s t := by
+      intro t ht
+      let C_t := f.resolute_committee (chain t) hres
+      let C_t1 := f.resolute_committee (chain (t + 1)) hres
+      -- Identify the manipulator v_t = (t, i)
+      let v_t : Fin (q * k) := finProdFinEquiv (⟨t, ht⟩, i)
+
+      -- Verify plentifulness
+      have hpl_t : (chain t).plentiful :=
+        chain_instance_plentiful_lt k q hq_pos inst inst' i hi hvar t ht hpl
+      have hpl_t1 : (chain (t + 1)).plentiful := by
+        if h : t + 1 < q then
+          exact chain_instance_plentiful_lt k q hq_pos inst inst' i hi hvar (t + 1) h hpl
+        else
+          have ge_q : t + 1 ≥ q := by linarith
+          exact chain_instance_plentiful_ge k q hq_pos inst inst' i hvar (t + 1) ge_q hpl'
+
+      -- Voter v_t is in chain t
+      have hv_t_mem : v_t ∈ (chain t).voters :=
+        chain_instance_voter_mem k q hq_pos inst inst' i hi hvar t ht
+
+      -- Variant relation: chain t and chain (t+1) are v_t-variants
+      have h_var_step : (chain t).is_i_variant (chain (t + 1)) v_t :=
+        chain_instance_step_variant k q hq_pos inst inst' i hi hvar t ht
+
+      -- Ballot change: v_t changes from A to inst'.approves i (which is subset of A)
+      obtain ⟨hA_old, hA_new⟩ := chain_instance_step_approval k q hq_pos inst inst' i hvar t ht
+
+      -- Note: chain_instance_step_approval gives equalities for v_t's approval
+      -- hA_old: (chain t).approves v_t = A
+      -- hA_new: (chain (t+1)).approves v_t = inst'.approves i
+
+      have h_subset_step : (chain (t + 1)).approves v_t ⊂ (chain t).approves v_t := by
+        rw [hA_new, hA_old]
+        exact hsub
+
+      -- Apply SP of f
+      have h_not_better := hsp (chain t) (chain (t + 1)) v_t hpl_t hpl_t1 hv_t_mem h_var_step h_subset_step hres
+
+      -- h_not_better says ¬ (C_t1 ∩ A ⊃ C_t ∩ A)
+      -- We need to convert this to card comparison.
+      rw [hA_old] at h_not_better
+
+      -- Use the size property of C_t and C_t1
+      have h_size_t : C_t.card = k := (hwf (chain t)).2 _ (f.resolute_committee_mem (chain t) hres) |>.1
+      have h_size_t1 : C_t1.card = k := (hwf (chain (t + 1))).2 _ (f.resolute_committee_mem (chain (t + 1)) hres) |>.1
+
+      -- Lemma logic inline:
+      -- C_t, C_t1 are size k subsets of Fin (k+1).
+      -- If card (C_t1 ∩ A) > card (C_t ∩ A), then C_t1 ∩ A ⊃ C_t ∩ A.
+      by_contra h_contra
+      push_neg at h_contra -- s(t+1) > s(t)
+      apply h_not_better
+
+      -- Show strict superset
+      -- Comparison of intersections with A
+      -- Let X = C_t, Y = C_t1. |X|=|Y|=k. |Y∩A| > |X∩A|.
+      -- X, Y are complements of singletons {x}, {y}.
+      have hX_eq : ∃ x, C_t = Finset.univ.erase x := by
+        have h_compl : C_tᶜ.card = 1 := by
+          rw [Finset.card_compl, h_size_t, Fintype.card_fin]
+          simp
+        rcases Finset.card_eq_one.mp h_compl with ⟨x, hx⟩
+        use x
+        rw [← Finset.compl_singleton, ← hx, compl_compl]
+      have hY_eq : ∃ y, C_t1 = Finset.univ.erase y := by
+        have h_compl : C_t1ᶜ.card = 1 := by
+          rw [Finset.card_compl, h_size_t1, Fintype.card_fin]
+          simp
+        rcases Finset.card_eq_one.mp h_compl with ⟨y, hy⟩
+        use y
+        rw [← Finset.compl_singleton, ← hy, compl_compl]
+
+      rcases hX_eq with ⟨x, hX_eq_def⟩
+      rcases hY_eq with ⟨y, hY_eq_def⟩
+      show C_t1 ∩ A ⊃ C_t ∩ A
+      rw [hX_eq_def, hY_eq_def]
+
+      have h_contra' : #(A.erase x) < #(A.erase y) := by
+        change #(C_t ∩ A) < #(C_t1 ∩ A) at h_contra
+        rw [hX_eq_def, hY_eq_def, Finset.erase_inter, Finset.erase_inter, Finset.univ_inter] at h_contra
+        exact h_contra
+      simp only [Finset.erase_inter, Finset.univ_inter]
+      -- |A \ {y}| > |A \ {x}| implies y ∉ A and x ∈ A
+      have hy : y ∉ A := by
+        by_contra hy_in
+        have : (A.erase y).card = A.card - 1 := Finset.card_erase_of_mem hy_in
+        have : A.card - 1 ≤ (A.erase x).card := Finset.pred_card_le_card_erase
+        linarith
+      have hx : x ∈ A := by
+        by_contra hx_not
+        have hAxA : (A.erase x) = A := Finset.erase_eq_of_notMem hx_not
+        have : (A.erase x).card = A.card := by rw [hAxA]
+        have : (A.erase y).card ≤ A.card := Finset.card_erase_le
+        linarith
+
+      -- Then A \ {y} = A, and A \ {x} ⊂ A
+      rw [Finset.erase_eq_of_notMem hy]
+      exact Finset.erase_ssubset hx
+
+    -- Sum up inequalities
+    have h_sum : s q ≤ s 0 := by
+      have aux : ∀ n, n ≤ q → s n ≤ s 0 := by
+        intro n hn
+        induction n with
+        | zero => exact le_refl _
+        | succ m ih =>
+          have hm : m < q := Nat.lt_of_succ_le hn
+          exact le_trans (h_step m hm) (ih (le_of_lt hm))
+      exact aux q (le_refl q)
+
+    -- Relate s 0 and s q to f' values
+    have hs0 : s 0 = (f'.resolute_committee inst hres' ∩ A).card := by
+      dsimp only [s]
+      congr 1
+      have h_apply_eq : f (chain 0) = f' inst := by
+        rw [chain_instance_zero_output k q hq_pos inst inst' i hvar f]
+        rfl
+      have hmem1 : f.resolute_committee (chain 0) hres ∈ f (chain 0) :=
+        f.resolute_committee_mem (chain 0) hres
+      have hmem2 : f'.resolute_committee inst hres' ∈ f' inst :=
+        f'.resolute_committee_mem inst hres'
+      rw [h_apply_eq] at hmem1
+      have hcard : (f' inst).card = 1 := hres' inst
+      rw [Finset.card_eq_one] at hcard
+      obtain ⟨W, hW⟩ := hcard
+      rw [hW] at hmem1 hmem2
+      simp at hmem1 hmem2
+      rw [hmem1, hmem2]
+
+
+    have hsq : s q = (f'.resolute_committee inst' hres' ∩ A).card := by
+      dsimp only [s]
+      congr 1
+      have h_apply_eq : f (chain q) = f' inst' := by
+        rw [chain_instance_ge_q_output k q hq_pos inst inst' i hvar q (le_refl q) f]
+        rfl
+      have hmem1 : f.resolute_committee (chain q) hres ∈ f (chain q) :=
+        f.resolute_committee_mem (chain q) hres
+      have hmem2 : f'.resolute_committee inst' hres' ∈ f' inst' :=
+        f'.resolute_committee_mem inst' hres'
+      rw [h_apply_eq] at hmem1
+      have hcard : (f' inst').card = 1 := hres' inst'
+      rw [Finset.card_eq_one] at hcard
+      obtain ⟨W, hW⟩ := hcard
+      rw [hW] at hmem1 hmem2
+      simp at hmem1 hmem2
+      rw [hmem1, hmem2]
+
+    rw [hs0, hsq] at h_sum
+    linarith
 
 end Peters.InductionN
