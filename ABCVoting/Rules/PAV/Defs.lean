@@ -1,4 +1,5 @@
 import ABCVoting.Basic
+import ABCVoting.ABCRule
 import Mathlib.Algebra.BigOperators.Ring.Finset
 
 open Finset BigOperators
@@ -30,12 +31,95 @@ def pav_score (inst : ABCInstance V C k) (W : Finset C) : ℚ :=
 
 /--
 A committee W is a PAV winner if:
-1. It has size k
-2. It maximizes the PAV score among all committees of size k
+1. It is a subset of candidates
+2. It has size k
+3. It maximizes the PAV score among all size-k subsets of candidates
 -/
 def is_pav_winner (inst : ABCInstance V C k) (W : Finset C) : Prop :=
+  W ⊆ inst.candidates ∧
   W.card = k ∧
-  ∀ W' : Finset C, W'.card = k → inst.pav_score W' ≤ inst.pav_score W
+  ∀ W' : Finset C, W' ⊆ inst.candidates → W'.card = k → inst.pav_score W' ≤ inst.pav_score W
+
+-- ============================================================================
+-- PAV SCORE PROPERTIES
+-- ============================================================================
+
+/--
+The PAV score of a committee only depends on its intersection with candidates,
+because voters only approve candidates from inst.candidates.
+-/
+lemma pav_score_inter_candidates (inst : ABCInstance V C k) (W : Finset C) :
+    inst.pav_score W = inst.pav_score (W ∩ inst.candidates) := by
+  unfold pav_score
+  apply Finset.sum_congr rfl
+  intro v hv
+  -- For v ∈ voters, we have approves v ⊆ candidates
+  have h_sub := inst.approves_subset v hv
+  -- Prove the sets are equal: W ∩ approves v = W ∩ candidates ∩ approves v
+  have h_eq : W ∩ inst.approves v = W ∩ inst.candidates ∩ inst.approves v := by
+    ext c
+    simp only [mem_inter]
+    exact ⟨fun ⟨hcW, hca⟩ => ⟨⟨hcW, h_sub hca⟩, hca⟩, fun ⟨⟨hcW, _⟩, hca⟩ => ⟨hcW, hca⟩⟩
+  simp only [h_eq]
+
+-- ============================================================================
+-- PAV AS AN ABC RULE
+-- ============================================================================
+
+/--
+Helper lemma: PAV score depends only on voters and their approval ballots.
+-/
+lemma pav_score_extensional (inst inst' : ABCInstance V C k) (W : Finset C)
+    (hv : inst.voters = inst'.voters)
+    (ha : ∀ v ∈ inst.voters, inst.approves v = inst'.approves v) :
+    inst.pav_score W = inst'.pav_score W := by
+  unfold pav_score
+  rw [hv]
+  apply Finset.sum_congr rfl
+  intro v hv_mem
+  -- For v in voters, approves v is the same in both instances
+  have hv_mem' : v ∈ inst.voters := hv ▸ hv_mem
+  simp only [ha v hv_mem']
+
+/--
+PAV as an ABC voting rule.
+
+Returns all committees of size k that maximize the PAV score.
+This is an irresolute rule (may return multiple committees).
+-/
+noncomputable def PAV : ABCRule V C k where
+  apply inst := inst.candidates.powersetCard k |>.filter (fun W =>
+    ∀ W' ∈ inst.candidates.powersetCard k, inst.pav_score W' ≤ inst.pav_score W)
+  extensional := by
+    intro inst inst' hv hc ha
+    ext W
+    simp only [mem_filter, mem_powersetCard]
+    constructor
+    · intro ⟨⟨hW_sub, hW_card⟩, hW_max⟩
+      refine ⟨⟨hc ▸ hW_sub, hW_card⟩, ?_⟩
+      intro W' ⟨hW'_sub, hW'_card⟩
+      rw [← pav_score_extensional inst inst' W' hv ha]
+      rw [← pav_score_extensional inst inst' W hv ha]
+      exact hW_max W' ⟨hc.symm ▸ hW'_sub, hW'_card⟩
+    · intro ⟨⟨hW_sub, hW_card⟩, hW_max⟩
+      refine ⟨⟨hc.symm ▸ hW_sub, hW_card⟩, ?_⟩
+      intro W' ⟨hW'_sub, hW'_card⟩
+      rw [pav_score_extensional inst inst' W' hv ha]
+      rw [pav_score_extensional inst inst' W hv ha]
+      exact hW_max W' ⟨hc ▸ hW'_sub, hW'_card⟩
+
+/--
+A committee is in PAV's output if and only if it is a PAV winner.
+-/
+lemma mem_PAV_iff (inst : ABCInstance V C k) (W : Finset C) :
+    W ∈ PAV inst ↔ inst.is_pav_winner W := by
+  unfold PAV is_pav_winner
+  simp only [mem_filter, mem_powersetCard]
+  constructor
+  · intro ⟨⟨hW_sub, hW_card⟩, hW_max⟩
+    refine ⟨hW_sub, hW_card, fun W' hW'_sub hW'_card => hW_max W' ⟨hW'_sub, hW'_card⟩⟩
+  · intro ⟨hW_sub, hW_card, hW_max⟩
+    refine ⟨⟨hW_sub, hW_card⟩, fun W' ⟨hW'_sub, hW'_card⟩ => hW_max W' hW'_sub hW'_card⟩
 
 -- ============================================================================
 -- HARMONIC FUNCTION LEMMAS

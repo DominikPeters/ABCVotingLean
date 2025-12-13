@@ -206,7 +206,7 @@ Assume for contradiction that every voter in S has utility < ℓ in W.
 -/
 theorem pav_winner_satisfies_ejr_plus (inst : ABCInstance V C k) (W : Finset C)
     (h_winner : inst.is_pav_winner W) : inst.is_ejr_plus W := by
-  obtain ⟨h_card, h_max⟩ := h_winner
+  obtain ⟨hW_sub, h_card, h_max⟩ := h_winner
   intro S l hS_sub hl ⟨h_large, c, hc_cand, hS_approves⟩
   by_contra h_neg
   push_neg at h_neg
@@ -283,7 +283,14 @@ theorem pav_winner_satisfies_ejr_plus (inst : ABCInstance V C k) (W : Finset C)
       _ = inst.pav_score (W' \ {c'}) := by linarith
 
   -- This contradicts W being a PAV winner
-  have h_le := h_max (W' \ {c'}) h_size
+  have h_W'_sub : W' \ {c'} ⊆ inst.candidates := by
+    intro x hx
+    simp only [W', mem_sdiff, mem_union, mem_singleton] at hx
+    obtain ⟨hx_in, _⟩ := hx
+    rcases hx_in with hx_W | rfl
+    · exact hW_sub hx_W
+    · exact (mem_sdiff.mp hc_cand).1
+  have h_le := h_max (W' \ {c'}) h_W'_sub h_size
   linarith
 
 end ABCInstance
