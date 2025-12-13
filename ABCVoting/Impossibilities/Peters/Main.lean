@@ -6,6 +6,7 @@ import ABCVoting.Impossibilities.Peters.BaseCase
 import ABCVoting.Impossibilities.Peters.InductionN
 import ABCVoting.Impossibilities.Peters.InductionM
 import ABCVoting.Impossibilities.Peters.InductionK
+import ABCVoting.Impossibilities.Peters.StrategyproofnessPlentiful
 
 open Finset BigOperators ABCInstance
 
@@ -30,6 +31,33 @@ namespace Peters
 -- ============================================================================
 -- MAIN IMPOSSIBILITY THEOREM
 -- ============================================================================
+
+/--
+Peters' impossibility theorem, stated with strategyproofness restricted to plentiful instances.
+
+This matches Peters' convention of implicitly restricting the domain of the rule to profiles with
+at least `k` approved candidates in total.
+-/
+theorem peters_impossibility_onPlentiful
+    (n m k : ℕ)
+    (hk : k ≥ 3)
+    (hn_div : k ∣ n)
+    (hn_pos : 0 < n)
+    (hm : m ≥ k + 1)
+    (f : ABCRule (Fin n) (Fin m) k)
+    (hres : f.IsResolute)
+    (heff : f.SatisfiesWeakEfficiency)
+    (hprop : f.SatisfiesProportionality)
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
+    False := by
+  -- The proof proceeds by reduction to the base case.
+  -- Each step uses one of the induction lemmas.
+  --
+  -- Step 1: Reduce m to k+1 using InductionM
+  -- Step 2: Reduce n to k using InductionN
+  -- Step 3: Reduce k to 3 using InductionK
+  -- Step 4: Apply base case
+  sorry
 
 /--
 **Peters' Impossibility Theorem**
@@ -59,23 +87,9 @@ theorem peters_impossibility
     (hprop : f.SatisfiesProportionality)
     (hsp : f.SatisfiesResoluteStrategyproofness) :
     False := by
-  -- The proof proceeds by reduction to the base case.
-  -- Each step uses one of the induction lemmas.
-
-  -- Step 1: Reduce m to k+1 using InductionM
-  -- We apply InductionM.induction_m (m - k - 1) times
-
-  -- Step 2: Reduce n to k using InductionN
-  -- Since k | n, we have n = qk for some q ≥ 1
-  -- Apply InductionN.induction_n to get a rule for k voters
-
-  -- Step 3: Reduce k to 3 using InductionK
-  -- Apply InductionK.induction_k (k - 3) times
-
-  -- Step 4: Apply base case
-  -- We now have a rule for k=3, n=3, m=4, contradicting BaseCase.base_case_impossibility
-
-  sorry
+  -- Unrestricted strategyproofness implies strategyproofness on plentiful instances.
+  refine peters_impossibility_onPlentiful n m k hk hn_div hn_pos hm f hres heff hprop ?_
+  exact Peters.strategyproof_onPlentiful_of_strategyproof (f := f) hsp
 
 /--
 Alternative statement: The conjunction of axioms is unsatisfiable.
