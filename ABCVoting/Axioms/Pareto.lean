@@ -29,7 +29,7 @@ Pareto optimality (for committees of size k): A committee W is Pareto optimal if
 This means we cannot improve at least one voter's utility without harming another.
 -/
 def is_pareto_optimal (inst : ABCInstance V C k) (W : Finset C) : Prop :=
-  W.card = k ∧
-  ∀ W' : Finset C, W'.card = k → ¬inst.pareto_dominates W' W
+  W ⊆ inst.candidates ∧ W.card = k ∧
+  ∀ W' ⊆ inst.candidates, W'.card = k → ¬inst.pareto_dominates W' W
 
 end ABCInstance

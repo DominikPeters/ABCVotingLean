@@ -39,12 +39,12 @@ This is a contradiction.
 -/
 theorem pav_winner_is_pareto_optimal (inst : ABCInstance V C k) (W : Finset C)
     (h_winner : inst.is_pav_winner W) : inst.is_pareto_optimal W := by
-  obtain ⟨h_card, h_max⟩ := h_winner
-  refine ⟨h_card, ?_⟩
-  intro W' h_card' h_dom
+  obtain ⟨h_sub, h_card, h_max⟩ := h_winner
+  refine ⟨h_sub, h_card, ?_⟩
+  intro W' h_sub' h_card' h_dom
   have h_score_strict : inst.pav_score W < inst.pav_score W' :=
     pareto_dominates_implies_higher_score inst W W' h_dom
-  have h_score_le : inst.pav_score W' ≤ inst.pav_score W := h_max W' h_card'
+  have h_score_le : inst.pav_score W' ≤ inst.pav_score W := h_max W' h_sub' h_card'
   exact absurd h_score_strict (not_lt_of_ge h_score_le)
 
 end ABCInstance
