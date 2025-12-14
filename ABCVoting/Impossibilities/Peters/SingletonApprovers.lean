@@ -1,6 +1,9 @@
 import ABCVoting.ABCRule
+import ABCVoting.Axioms.Efficiency
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
+import ABCVoting.Impossibilities.Peters.RestrictToPlentiful
+import Mathlib.Data.Finset.Card
 
 open Finset BigOperators ABCInstance
 
@@ -269,15 +272,119 @@ lemma profile_with_switched_variant (inst : ABCInstance V C k) (c : C)
     (profile_with_switched inst c hc hm (insert i S)) i := by
   refine ⟨rfl, rfl, ?_⟩
   intro v _ hne
-  simp only [profile_with_switched]
-  have hiff : v ∈ S ↔ v ∈ insert i S := by
-    constructor
-    · exact Finset.mem_insert_of_mem
-    · intro h
-      cases Finset.mem_insert.mp h with
-      | inl heq => exact absurd heq hne
-      | inr hmem => exact hmem
-  simp only [hiff]
+  simp [profile_with_switched, Finset.mem_insert, hne, hi_notin]
+
+/-- Any ballot of size at least `k` witnesses plentifulness. -/
+lemma plentiful_of_ballot_card_ge_k (inst : ABCInstance V C k) (v : V)
+    (hv : v ∈ inst.voters) (hcard : (inst.approves v).card ≥ k) :
+    inst.plentiful := by
+  have hsub : inst.approves v ⊆ inst.approvedCandidates := by
+    intro c hc
+    have : c ∈ inst.voters.biUnion inst.approves :=
+      Finset.mem_biUnion.2 ⟨v, hv, by simpa using hc⟩
+    simpa [ABCInstance.approvedCandidates] using this
+  have hcard_le : (inst.approves v).card ≤ inst.approvedCandidates.card :=
+    Finset.card_le_card hsub
+  exact le_trans hcard hcard_le
+
+/--
+`profile_with_switched` is plentiful if either `S` is empty (so it is just `inst`,
+assumed plentiful) or if `S` is nonempty, since then some voter reports
+`inst.candidates \\ {c}`, which has size `k` when `m = k+1`.
+-/
+lemma profile_with_switched_plentiful (inst : ABCInstance V C k) (c : C)
+    (hc : c ∈ inst.candidates) (hm_card : inst.candidates.card = k + 1)
+    (hm_ge_2 : inst.candidates.card ≥ 2) (S : Finset V) (hS_sub : S ⊆ inst.voters)
+    (hpl : inst.plentiful) :
+    (profile_with_switched inst c hc hm_ge_2 S).plentiful := by
+  classical
+  by_cases hS : S = ∅
+  · subst hS
+    simpa [profile_with_switched] using hpl
+  · have hne : S.Nonempty := Finset.nonempty_iff_ne_empty.mpr hS
+    rcases hne with ⟨v, hv⟩
+    have hv_voters : v ∈ inst.voters := hS_sub hv
+    have hv_ballot :
+        (profile_with_switched inst c hc hm_ge_2 S).approves v = inst.candidates \ {c} := by
+      simp [profile_with_switched, hv]
+    have hcard_ballot : ((profile_with_switched inst c hc hm_ge_2 S).approves v).card = k := by
+      have hc_sub : {c} ⊆ inst.candidates := Finset.singleton_subset_iff.mpr hc
+      have h_card_sdiff_eq_k : (inst.candidates \ {c}).card = k := by
+        calc
+          (inst.candidates \ {c}).card
+              = inst.candidates.card - ({c} : Finset C).card := by
+                  rw [Finset.card_sdiff, Finset.inter_eq_left.mpr hc_sub]
+          _ = (k + 1) - 1 := by simp [hm_card, Finset.card_singleton]
+          _ = k := by simp
+      simpa [hv_ballot, h_card_sdiff_eq_k]
+    have hv_in_switched : v ∈ (profile_with_switched inst c hc hm_ge_2 S).voters := by
+      simp [profile_with_switched, hv_voters]
+    have hcard_ge : ((profile_with_switched inst c hc hm_ge_2 S).approves v).card ≥ k := by
+      simpa [hcard_ballot]
+    exact plentiful_of_ballot_card_ge_k
+      (inst := profile_with_switched inst c hc hm_ge_2 S) (v := v) hv_in_switched hcard_ge
+/--
+Plentiful strategyproofness analogue of `sp_preserves_committee_ne_strict`.
+-/
+lemma sp_preserves_committee_ne_strict_on_plentiful (f : ABCRule V C k)
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
+    (hwf : f.IsWellFormed)
+    (inst inst' : ABCInstance V C k) (i : V)
+    (hpl : inst.plentiful) (hpl' : inst'.plentiful)
+    (hi : i ∈ inst.voters)
+    (hvar : inst.is_i_variant inst' i)
+    (hsub : inst'.approves i ⊂ inst.approves i)
+    (hres : f.IsResolute)
+    (h_size : (inst.approves i).card = k)
+    (hW_ne : f.resolute_committee inst hres ≠ inst.approves i) :
+    f.resolute_committee inst' hres ≠ inst.approves i := by
+  intro hcontra
+  have hleft_eq : f.resolute_committee inst' hres ∩ inst.approves i = inst.approves i := by
+    rw [hcontra, Finset.inter_self]
+  have hW_card : (f.resolute_committee inst hres).card = k :=
+    (hwf inst).2 _ (f.resolute_committee_mem inst hres) |>.1
+  have hcard_inter_le : (f.resolute_committee inst hres ∩ inst.approves i).card ≤ k := by
+    have hsubset : f.resolute_committee inst hres ∩ inst.approves i ⊆ f.resolute_committee inst hres :=
+      Finset.inter_subset_left
+    exact le_trans (Finset.card_le_card hsubset) (by simpa [hW_card])
+  have hcard_inter_lt : (f.resolute_committee inst hres ∩ inst.approves i).card < k := by
+    by_contra hnot
+    have hcard_ge : k ≤ (f.resolute_committee inst hres ∩ inst.approves i).card :=
+      le_of_not_gt hnot
+    have hcard_eq : (f.resolute_committee inst hres ∩ inst.approves i).card = k :=
+      le_antisymm hcard_inter_le hcard_ge
+    have hsubset : f.resolute_committee inst hres ∩ inst.approves i ⊆ inst.approves i :=
+      Finset.inter_subset_right
+    have hcardA_le : (inst.approves i).card ≤ (f.resolute_committee inst hres ∩ inst.approves i).card := by
+      simpa [h_size, hcard_eq]
+    have hEqA :
+        f.resolute_committee inst hres ∩ inst.approves i = inst.approves i :=
+      Finset.eq_of_subset_of_card_le hsubset hcardA_le
+    have hA_subset_W : inst.approves i ⊆ f.resolute_committee inst hres := by
+      have hsubleft : f.resolute_committee inst hres ∩ inst.approves i ⊆ f.resolute_committee inst hres :=
+        Finset.inter_subset_left
+      simpa [hEqA] using hsubleft
+    have hW_eq :
+        f.resolute_committee inst hres = inst.approves i :=
+      (Finset.eq_of_subset_of_card_le hA_subset_W (by simp [hW_card, h_size])).symm
+    exact hW_ne hW_eq
+  have hgain :
+      f.resolute_committee inst' hres ∩ inst.approves i ⊃
+        f.resolute_committee inst hres ∩ inst.approves i := by
+    have hss :
+        f.resolute_committee inst hres ∩ inst.approves i ⊂ inst.approves i := by
+      refine Finset.ssubset_iff_subset_ne.mpr ?_
+      refine ⟨Finset.inter_subset_right, ?_⟩
+      intro hEq
+      have hlt' : (inst.approves i).card < (inst.approves i).card := by
+        have := hcard_inter_lt
+        have hk : (inst.approves i).card = k := h_size
+        simpa [hEq, hk] using this
+      exact (lt_irrefl _ hlt')
+    -- rewrite RHS using hleft_eq to get the strict gain
+    simpa [hleft_eq] using hss
+  have hno := hsp inst inst' i hpl hpl' hi hvar hsub hres
+  exact hno hgain
 
 /--
 For a non-{c} voter i, their original ballot is a strict subset of C \ {c}
@@ -318,10 +425,12 @@ lemma c_in_committee_induction_step
     (f : ABCRule V C k)
     (hwf : f.IsWellFormed)
     (hres : f.IsResolute)
-    (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (S : Finset V) (i : V)
     (hi_in_S : i ∈ S)
     (hi_voter : i ∈ inst.voters)
+    (hS_sub : S ⊆ inst.voters)
+    (hpl : inst.plentiful)
     (hi_non_sing : inst.approves i ≠ {c})
     (hc_in_S : c ∈ f.resolute_committee (profile_with_switched inst c hc hm_ge_2 S) hres) :
     c ∈ f.resolute_committee (profile_with_switched inst c hc hm_ge_2 (S.erase i)) hres := by
@@ -331,6 +440,14 @@ lemma c_in_committee_induction_step
 
   let P_S := profile_with_switched inst c hc hm_ge_2 S
   let P_Si := profile_with_switched inst c hc hm_ge_2 (S.erase i)
+
+  have hpl_S : P_S.plentiful :=
+    profile_with_switched_plentiful inst c hc hm hm_ge_2 S hS_sub hpl
+  have hS_sub_erase : S.erase i ⊆ inst.voters := by
+    intro v hv
+    exact hS_sub (Finset.mem_of_mem_erase hv)
+  have hpl_Si : P_Si.plentiful :=
+    profile_with_switched_plentiful inst c hc hm hm_ge_2 (S.erase i) hS_sub_erase hpl
 
   -- In P_S, voter i reports C \ {c}
   have hi_ballot_S : P_S.approves i = inst.candidates \ {c} := by
@@ -425,8 +542,10 @@ lemma c_in_committee_induction_step
       exact hi_voter
 
     have hW_ne' : f.resolute_committee P_Si hres ≠ P_S.approves i :=
-      ABCRule.sp_preserves_committee_ne_strict f hsp hwf P_S P_Si i hi_voter_S hvar
-        hsub hres h_size hW_ne
+      sp_preserves_committee_ne_strict_on_plentiful (f := f) (hsp := hsp) (hwf := hwf)
+        (inst := P_S) (inst' := P_Si) (i := i)
+        (hpl := hpl_S) (hpl' := hpl_Si) (hi := hi_voter_S) (hvar := hvar)
+        (hsub := hsub) (hres := hres) (h_size := h_size) (hW_ne := hW_ne)
 
     -- f(P_{S\i}) ≠ C \ {c}, so since m = k+1, we must have c ∈ f(P_{S\i})
     rw [hi_ballot_S] at hW_ne'
@@ -496,7 +615,8 @@ theorem singleton_approvers_elected {k : ℕ}
     (hwf : f.IsWellFormed)
     (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality)
-    (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
+    (hpl : inst.plentiful) :
     c ∈ f.resolute_committee inst hres := by
   -- Need m ≥ 2 for the party-list transformation
   have hm_ge_2 : inst.candidates.card ≥ 2 := by
@@ -534,6 +654,7 @@ theorem singleton_approvers_elected {k : ℕ}
 
   -- The non-singleton voters
   let S := non_singleton_voters inst c
+  have hS_sub : S ⊆ inst.voters := non_singleton_voters_subset inst c
 
   -- Key: profile_with_switched with S = non_singleton_voters gives same committee as P'
   -- (because voters have same ballots)
@@ -579,15 +700,16 @@ theorem singleton_approvers_elected {k : ℕ}
         have ⟨i, hi_in_T⟩ := Finset.nonempty_iff_ne_empty.mpr hT_empty
         -- i is a non-singleton voter (since T ⊆ S = non_singleton_voters)
         have hi_in_S : i ∈ S := hT_sub hi_in_T
-        have hi_voter : i ∈ inst.voters := (non_singleton_voters_subset inst c) hi_in_S
+        have hi_voter : i ∈ inst.voters := hS_sub hi_in_S
         have hi_non_sing : inst.approves i ≠ {c} := by
           simp only [S, non_singleton_voters, Finset.mem_filter] at hi_in_S
           exact hi_in_S.2
         -- Apply c_in_committee_induction_step to get c ∈ f(profile_with_switched (T.erase i))
+        have hT_voters : T ⊆ inst.voters := fun x hx => hS_sub (hT_sub hx)
         have hc_in_erase : c ∈ f.resolute_committee
             (profile_with_switched inst c hc hm_ge_2 (T.erase i)) hres :=
           c_in_committee_induction_step inst c hc hm hm_ge_2 hexcl f hwf hres hsp
-            T i hi_in_T hi_voter hi_non_sing hc_in_T
+            T i hi_in_T hi_voter hT_voters hpl hi_non_sing hc_in_T
         -- Use induction hypothesis on T.erase i
         have h_erase_sub : T.erase i ⊆ S := fun x hx =>
           hT_sub (Finset.mem_of_mem_erase hx)
@@ -612,10 +734,11 @@ theorem committee_not_complement {k : ℕ}
     (hwf : f.IsWellFormed)
     (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality)
-    (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
+    (hpl : inst.plentiful) :
     f.resolute_committee inst hres ≠ inst.candidates \ {c} := by
   intro heq
-  have hc_in := singleton_approvers_elected inst c hc hm h_size hexcl f hwf hres hprop hsp
+  have hc_in := singleton_approvers_elected inst c hc hm h_size hexcl f hwf hres hprop hsp hpl
   rw [heq] at hc_in
   exact Finset.notMem_sdiff_of_mem_right (mem_singleton_self c) hc_in
 

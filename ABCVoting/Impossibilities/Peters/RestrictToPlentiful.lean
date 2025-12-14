@@ -1,3 +1,7 @@
+/-
+Definitions of axioms restricted to plentiful instances
+-/
+
 import ABCVoting.Axioms.Efficiency
 import ABCVoting.Axioms.Strategyproofness
 
@@ -31,5 +35,20 @@ lemma strategyproof_onPlentiful_of_strategyproof (f : ABCRule V C k)
     SatisfiesResoluteStrategyproofnessOnPlentiful f := by
   intro inst inst' i _ _ hi hvar hsub hres
   exact hsp inst inst' i hi hvar hsub hres
+
+/--
+Well-formed restricted to plentiful instances.
+-/
+def IsWellFormedOnPlentiful (f : ABCRule V C k) : Prop :=
+  ∀ (inst : ABCInstance V C k),
+    inst.plentiful →
+    (f inst).Nonempty ∧
+    ∀ W ∈ f inst, W.card = k ∧ W ⊆ inst.candidates
+
+lemma well_formed_onPlentiful_of_well_formed (f : ABCRule V C k)
+    (hwf : f.IsWellFormed) :
+    IsWellFormedOnPlentiful f := by
+  intro inst hpl
+  exact hwf inst
 
 end Peters

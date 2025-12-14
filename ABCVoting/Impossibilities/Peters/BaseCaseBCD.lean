@@ -8,7 +8,7 @@ we show f(P₁_₅) = acd, and then f(P₂) = bcd.
 import ABCVoting.ABCRule
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
-import ABCVoting.Impossibilities.Peters.SingletonApprovers
+import ABCVoting.Impossibilities.Peters.RestrictToPlentiful
 import ABCVoting.Fin4Card3
 import ABCVoting.Impossibilities.Peters.BaseCaseCommon
 
@@ -127,6 +127,62 @@ lemma P₇_is_party_list : (mkInstance P₇ P₇_proper).is_party_list := by
   intro v₁ _ v₂ _
   fin_cases v₁ <;> fin_cases v₂ <;> decide
 
+lemma P₁_plentiful : (mkInstance P₁ P₁_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₁_₅_plentiful : (mkInstance P₁_₅ P₁_₅_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₂_plentiful : (mkInstance P₂ P₂_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₂_₅_plentiful : (mkInstance P₂_₅ P₂_₅_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₃_plentiful : (mkInstance P₃ P₃_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₃_₅_plentiful : (mkInstance P₃_₅ P₃_₅_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₄_plentiful : (mkInstance P₄ P₄_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₄_₅_plentiful : (mkInstance P₄_₅ P₄_₅_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₅_plentiful : (mkInstance P₅ P₅_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₅_₅_plentiful : (mkInstance P₅_₅ P₅_₅_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₆_plentiful : (mkInstance P₆ P₆_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₆_₅_plentiful : (mkInstance P₆_₅ P₆_₅_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₇_plentiful : (mkInstance P₇ P₇_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
+lemma P₇_₅_plentiful : (mkInstance P₇_₅ P₇_₅_proper).plentiful := by
+  unfold ABCInstance.plentiful
+  decide
+
 -- ============================================================================
 -- SINGLETON APPROVERS FOR d IN P₁_₅
 -- ============================================================================
@@ -161,11 +217,11 @@ lemma d_in_candidates : (3 : C) ∈ (mkInstance P₁_₅ P₁_₅_proper).candid
 lemma candidates_card : (mkInstance P₁_₅ P₁_₅_proper).candidates.card = k + 1 := by decide
 
 lemma d_in_W_P₁_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (3 : C) ∈ W f hres P₁_₅ P₁_₅_proper :=
   SingletonApprovers.singleton_approvers_elected
     (mkInstance P₁_₅ P₁_₅_proper) 3 d_in_candidates candidates_card
-    d_meets_threshold_P₁_₅ d_exclusive_singleton_P₁_₅ f hwf hres hprop hsp
+    d_meets_threshold_P₁_₅ d_exclusive_singleton_P₁_₅ f hwf hres hprop hsp P₁_₅_plentiful
 
 -- ============================================================================
 -- GENERIC STEPS (LEMMA H / LEMMA I)
@@ -257,7 +313,7 @@ lemma v₁_in_voters : v₁ ∈ (mkInstance P₁_₅ P₁_₅_proper).voters := 
 
 /-- Key: if f(P₁) = acd, then f(P₁_₅) = acd -/
 lemma step1_f_P₁_₅_eq_acd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₁_₅ P₁_₅_proper = comm_bcd := by
   have hd : (3 : C) ∈ W f hres P₁_₅ P₁_₅_proper := d_in_W_P₁_₅ f hwf hres hprop hsp
@@ -265,7 +321,7 @@ lemma step1_f_P₁_₅_eq_acd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres :
   have h :
       W f hres P₁_₅ P₁_₅_proper = insert (3 : C) ballot_bc := by
     refine stepH f hwf hres hsp P₁ P₁_₅ P₁_proper P₁_₅_proper v₂ v₂_in_voters
-      P₁_₅_is_variant_P₁ P₁_ballot_strict_subset_P₁_₅ ballot_bc ?_ (3 : C) hd ?_ ?_ ?_
+      P₁_₅_is_variant_P₁ P₁_ballot_strict_subset_P₁_₅ P₁_plentiful P₁_₅_plentiful ballot_bc ?_ (3 : C) hd ?_ ?_ ?_
     · exact v₂_approves_ac
     · decide
     · decide
@@ -274,7 +330,7 @@ lemma step1_f_P₁_₅_eq_acd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres :
 
 /-- Next: if f(P₁) = acd, then f(P₂) = bcd -/
 lemma step2_f_P₂_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₂ P₂_proper = comm_acd := by
   have h_P₁_₅ : W f hres P₁_₅ P₁_₅_proper = comm_bcd :=
@@ -313,7 +369,7 @@ lemma step2_f_P₂_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.I
       simp [hW_eq_abd, comm_abd, comm_bcd, ballot_ab]
       decide
     have hno :=
-      hsp (mkInstance P₁_₅ P₁_₅_proper) inst₂ v₁ v₁_in_voters P₁_₅_is_variant_P₂
+      hsp (mkInstance P₁_₅ P₁_₅_proper) inst₂ v₁ P₁_₅_plentiful P₂_plentiful v₁_in_voters P₁_₅_is_variant_P₂
         P₂_ballot_strict_subset_P₁_₅ hres
     have h_eq : f.resolute_committee (mkInstance P₁_₅ P₁_₅_proper) hres = comm_bcd := by
       simpa [W] using h_P₁_₅
@@ -419,13 +475,13 @@ lemma singleton_party_size_b_P₂_₅ :
   decide
 
 lemma b_in_W_P₂_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₂_₅ P₂_₅_proper :=
-  singleton_approver_in_W f hwf hres hprop hsp P₂_₅ P₂_₅_proper (0 : C)
+  singleton_approver_in_W f hwf hres hprop hsp P₂_₅ P₂_₅_proper P₂_₅_plentiful (0 : C)
     singleton_party_size_b_P₂_₅ b_exclusive_singleton_P₂_₅
 
 lemma step3_f_P₂_₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₂_₅ P₂_₅_proper = comm_acd := by
   have h_P₂ : W f hres P₂ P₂_proper = comm_acd :=
@@ -434,7 +490,7 @@ lemma step3_f_P₂_₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres :
   have h :
       W f hres P₂_₅ P₂_₅_proper = insert (0 : C) ballot_cd := by
     refine stepH f hwf hres hsp P₂ P₂_₅ P₂_proper P₂_₅_proper v₃ (by decide)
-      P₂_to_P₂_₅_is_variant P₂_ballot_strict_subset_P₂_₅ ballot_cd rfl (0 : C) hb ?_ ?_ ?_
+      P₂_to_P₂_₅_is_variant P₂_ballot_strict_subset_P₂_₅ P₂_plentiful P₂_₅_plentiful ballot_cd rfl (0 : C) hb ?_ ?_ ?_
     · decide
     · decide
     · simpa [h_P₂]
@@ -464,7 +520,7 @@ lemma b_in_W_P₃ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
   mem_W_of_prop_singleton_one f hres hprop P₃ P₃_proper P₃_is_party_list (0 : C) (by decide)
 
 lemma step4_f_P₃_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₃ P₃_proper = comm_abd := by
   have h_P₂_₅ : W f hres P₂_₅ P₂_₅_proper = comm_acd :=
@@ -483,7 +539,7 @@ lemma step4_f_P₃_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.I
     decide
 
   refine stepI f hres hsp P₂_₅ P₃ P₂_₅_proper P₃_proper v₂ (by decide)
-    P₂_₅_is_variant_P₃ P₃_ballot_strict_subset_P₂_₅ comm_acd comm_abc comm_abd ?_ hW_cases ?_
+    P₂_₅_is_variant_P₃ P₃_ballot_strict_subset_P₂_₅ P₂_₅_plentiful P₃_plentiful comm_acd comm_abc comm_abd ?_ hW_cases ?_
   · exact h_P₂_₅
   · simpa [ballot_bc] using h_gain_if_abc
 
@@ -516,13 +572,13 @@ lemma singleton_party_size_b_P₃_₅ :
   decide
 
 lemma b_in_W_P₃_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₃_₅ P₃_₅_proper :=
-  singleton_approver_in_W f hwf hres hprop hsp P₃_₅ P₃_₅_proper (0 : C)
+  singleton_approver_in_W f hwf hres hprop hsp P₃_₅ P₃_₅_proper P₃_₅_plentiful (0 : C)
     singleton_party_size_b_P₃_₅ b_exclusive_singleton_P₃_₅
 
 lemma step5_f_P₃_₅_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₃_₅ P₃_₅_proper = comm_abd := by
   have h_P₃ : W f hres P₃ P₃_proper = comm_abd :=
@@ -531,7 +587,7 @@ lemma step5_f_P₃_₅_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres :
   have h :
       W f hres P₃_₅ P₃_₅_proper = insert (0 : C) ballot_bd := by
     refine stepH f hwf hres hsp P₃ P₃_₅ P₃_proper P₃_₅_proper v₂ (by decide)
-      P₃_to_P₃_₅_is_variant P₃_ballot_strict_subset_P₃_₅ ballot_bd rfl (0 : C) hb ?_ ?_ ?_
+      P₃_to_P₃_₅_is_variant P₃_ballot_strict_subset_P₃_₅ P₃_plentiful P₃_₅_plentiful ballot_bd rfl (0 : C) hb ?_ ?_ ?_
     · decide
     · decide
     · simpa [h_P₃]
@@ -561,7 +617,7 @@ lemma c_in_W_P₄ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
   mem_W_of_prop_singleton_one f hres hprop P₄ P₄_proper P₄_is_party_list (2 : C) (by decide)
 
 lemma step6_f_P₄_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₄ P₄_proper = comm_abc := by
   have h_P₃_₅ : W f hres P₃_₅ P₃_₅_proper = comm_abd :=
@@ -585,7 +641,7 @@ lemma step6_f_P₄_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.I
     · exact Or.inr hEq
     · exact Or.inl hEq
   refine stepI f hres hsp P₃_₅ P₄ P₃_₅_proper P₄_proper v₃ (by decide)
-    P₃_₅_is_variant_P₄ P₄_ballot_strict_subset_P₃_₅ comm_abd comm_acd comm_abc ?_ hW_cases' ?_
+    P₃_₅_is_variant_P₄ P₄_ballot_strict_subset_P₃_₅ P₃_₅_plentiful P₄_plentiful comm_abd comm_acd comm_abc ?_ hW_cases' ?_
   · exact h_P₃_₅
   · simpa [ballot_cd] using h_gain_if_bcd
 
@@ -618,13 +674,13 @@ lemma singleton_party_size_b_P₄_₅ :
   decide
 
 lemma b_in_W_P₄_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₄_₅ P₄_₅_proper :=
-  singleton_approver_in_W f hwf hres hprop hsp P₄_₅ P₄_₅_proper (0 : C)
+  singleton_approver_in_W f hwf hres hprop hsp P₄_₅ P₄_₅_proper P₄_₅_plentiful (0 : C)
     singleton_party_size_b_P₄_₅ b_exclusive_singleton_P₄_₅
 
 lemma step7_f_P₄_₅_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₄_₅ P₄_₅_proper = comm_abc := by
   have h_P₄ : W f hres P₄ P₄_proper = comm_abc :=
@@ -633,7 +689,7 @@ lemma step7_f_P₄_₅_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres :
   have h :
       W f hres P₄_₅ P₄_₅_proper = insert (0 : C) ballot_bc := by
     refine stepH f hwf hres hsp P₄ P₄_₅ P₄_proper P₄_₅_proper v₃ (by decide)
-      P₄_to_P₄_₅_is_variant P₄_ballot_strict_subset_P₄_₅ ballot_bc rfl (0 : C) hb ?_ ?_ ?_
+      P₄_to_P₄_₅_is_variant P₄_ballot_strict_subset_P₄_₅ P₄_plentiful P₄_₅_plentiful ballot_bc rfl (0 : C) hb ?_ ?_ ?_
     · decide
     · decide
     · simpa [h_P₄]
@@ -663,7 +719,7 @@ lemma d_in_W_P₅ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
   mem_W_of_prop_singleton_one f hres hprop P₅ P₅_proper P₅_is_party_list (3 : C) (by decide)
 
 lemma step8_f_P₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₅ P₅_proper = comm_acd := by
   have h_P₄_₅ : W f hres P₄_₅ P₄_₅_proper = comm_abc :=
@@ -682,7 +738,7 @@ lemma step8_f_P₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.I
     decide
 
   refine stepI f hres hsp P₄_₅ P₅ P₄_₅_proper P₅_proper v₂ (by decide)
-    P₄_₅_is_variant_P₅ P₅_ballot_strict_subset_P₄_₅ comm_abc comm_abd comm_acd ?_ hW_cases ?_
+    P₄_₅_is_variant_P₅ P₅_ballot_strict_subset_P₄_₅ P₄_₅_plentiful P₅_plentiful comm_abc comm_abd comm_acd ?_ hW_cases ?_
   · exact h_P₄_₅
   · simpa [ballot_bd] using h_gain_if_abd
 
@@ -715,13 +771,13 @@ lemma singleton_party_size_b_P₅_₅ :
   decide
 
 lemma b_in_W_P₅_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₅_₅ P₅_₅_proper :=
-  singleton_approver_in_W f hwf hres hprop hsp P₅_₅ P₅_₅_proper (0 : C)
+  singleton_approver_in_W f hwf hres hprop hsp P₅_₅ P₅_₅_proper P₅_₅_plentiful (0 : C)
     singleton_party_size_b_P₅_₅ b_exclusive_singleton_P₅_₅
 
 lemma step9_f_P₅_₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₅_₅ P₅_₅_proper = comm_acd := by
   have h_P₅ : W f hres P₅ P₅_proper = comm_acd :=
@@ -730,7 +786,7 @@ lemma step9_f_P₅_₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres :
   have h :
       W f hres P₅_₅ P₅_₅_proper = insert (0 : C) ballot_cd := by
     refine stepH f hwf hres hsp P₅ P₅_₅ P₅_proper P₅_₅_proper v₂ (by decide)
-      P₅_to_P₅_₅_is_variant P₅_ballot_strict_subset_P₅_₅ ballot_cd rfl (0 : C) hb ?_ ?_ ?_
+      P₅_to_P₅_₅_is_variant P₅_ballot_strict_subset_P₅_₅ P₅_plentiful P₅_₅_plentiful ballot_cd rfl (0 : C) hb ?_ ?_ ?_
     · decide
     · decide
     · simpa [h_P₅]
@@ -760,7 +816,7 @@ lemma b_in_W_P₆ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
   mem_W_of_prop_singleton_one f hres hprop P₆ P₆_proper P₆_is_party_list (0 : C) (by decide)
 
 lemma step10_f_P₆_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₆ P₆_proper = comm_abd := by
   have h_P₅_₅ : W f hres P₅_₅ P₅_₅_proper = comm_acd :=
@@ -780,7 +836,7 @@ lemma step10_f_P₆_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.
 
   -- Manipulator: v₃, true ballot ac at P₅_₅, reports a at P₆
   refine stepI f hres hsp P₅_₅ P₆ P₅_₅_proper P₆_proper v₃ (by decide)
-    P₅_₅_is_variant_P₆ P₆_ballot_strict_subset_P₅_₅ comm_acd comm_abc comm_abd ?_ hW_cases ?_
+    P₅_₅_is_variant_P₆ P₆_ballot_strict_subset_P₅_₅ P₅_₅_plentiful P₆_plentiful comm_acd comm_abc comm_abd ?_ hW_cases ?_
   · exact h_P₅_₅
   · simpa [ballot_bc] using h_gain_if_abc
 
@@ -813,13 +869,13 @@ lemma singleton_party_size_b_P₆_₅ :
   decide
 
 lemma b_in_W_P₆_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₆_₅ P₆_₅_proper :=
-  singleton_approver_in_W f hwf hres hprop hsp P₆_₅ P₆_₅_proper (0 : C)
+  singleton_approver_in_W f hwf hres hprop hsp P₆_₅ P₆_₅_proper P₆_₅_plentiful (0 : C)
     singleton_party_size_b_P₆_₅ b_exclusive_singleton_P₆_₅
 
 lemma step11_f_P₆_₅_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₆_₅ P₆_₅_proper = comm_abd := by
   have h_P₆ : W f hres P₆ P₆_proper = comm_abd :=
@@ -828,7 +884,7 @@ lemma step11_f_P₆_₅_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres 
   have h :
       W f hres P₆_₅ P₆_₅_proper = insert (0 : C) ballot_bd := by
     refine stepH f hwf hres hsp P₆ P₆_₅ P₆_proper P₆_₅_proper v₃ (by decide)
-      P₆_to_P₆_₅_is_variant P₆_ballot_strict_subset_P₆_₅ ballot_bd rfl (0 : C) hb ?_ ?_ ?_
+      P₆_to_P₆_₅_is_variant P₆_ballot_strict_subset_P₆_₅ P₆_plentiful P₆_₅_plentiful ballot_bd rfl (0 : C) hb ?_ ?_ ?_
     · decide
     · decide
     · simpa [h_P₆]
@@ -858,7 +914,7 @@ lemma c_in_W_P₇ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
   mem_W_of_prop_singleton_one f hres hprop P₇ P₇_proper P₇_is_party_list (2 : C) (by decide)
 
 lemma step12_f_P₇_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₇ P₇_proper = comm_abc := by
   have h_P₆_₅ : W f hres P₆_₅ P₆_₅_proper = comm_abd :=
@@ -882,7 +938,7 @@ lemma step12_f_P₇_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.
 
   -- Manipulator: v₂, true ballot cd at P₆_₅, reports c at P₇
   refine stepI f hres hsp P₆_₅ P₇ P₆_₅_proper P₇_proper v₂ (by decide)
-    P₆_₅_is_variant_P₇ P₇_ballot_strict_subset_P₆_₅ comm_abd comm_acd comm_abc ?_ hW_cases' ?_
+    P₆_₅_is_variant_P₇ P₇_ballot_strict_subset_P₆_₅ P₆_₅_plentiful P₇_plentiful comm_abd comm_acd comm_abc ?_ hW_cases' ?_
   · exact h_P₆_₅
   · simpa [ballot_cd] using h_gain_if_bcd
 
@@ -915,13 +971,13 @@ lemma singleton_party_size_c_P₇_₅ :
   decide
 
 lemma c_in_W_P₇_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (2 : C) ∈ W f hres P₇_₅ P₇_₅_proper :=
-  singleton_approver_in_W f hwf hres hprop hsp P₇_₅ P₇_₅_proper (2 : C)
+  singleton_approver_in_W f hwf hres hprop hsp P₇_₅ P₇_₅_proper P₇_₅_plentiful (2 : C)
     singleton_party_size_c_P₇_₅ c_exclusive_singleton_P₇_₅
 
 lemma step13_f_P₇_₅_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₇_₅ P₇_₅_proper = comm_abc := by
   have h_P₇ : W f hres P₇ P₇_proper = comm_abc :=
@@ -930,7 +986,7 @@ lemma step13_f_P₇_₅_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres 
   have h :
       W f hres P₇_₅ P₇_₅_proper = insert (2 : C) ballot_ab := by
     refine stepH f hwf hres hsp P₇ P₇_₅ P₇_proper P₇_₅_proper v₁ (by decide)
-      P₇_to_P₇_₅_is_variant P₇_ballot_strict_subset_P₇_₅ ballot_ab rfl (2 : C) hc ?_ ?_ ?_
+      P₇_to_P₇_₅_is_variant P₇_ballot_strict_subset_P₇_₅ P₇_plentiful P₇_₅_plentiful ballot_ab rfl (2 : C) hc ?_ ?_ ?_
     · decide
     · decide
     · simpa [h_P₇]
@@ -952,7 +1008,7 @@ lemma P₁_ballot_strict_subset_P₇_₅ :
   decide
 
 theorem contradiction_from_P₁_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     False := by
   have h_P₇_₅ : W f hres P₇_₅ P₇_₅_proper = comm_abc :=
@@ -964,7 +1020,7 @@ theorem contradiction_from_P₁_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed
     decide
 
   have hno :=
-    hsp (mkInstance P₇_₅ P₇_₅_proper) (mkInstance P₁ P₁_proper) v₃ (by decide)
+    hsp (mkInstance P₇_₅ P₇_₅_proper) (mkInstance P₁ P₁_proper) v₃ P₇_₅_plentiful P₁_plentiful (by decide)
       P₇_₅_is_variant_P₁ P₁_ballot_strict_subset_P₇_₅ hres
   -- SP forbids a strict improvement by reporting a strict subset
   exact hno (by simpa [W] using h_viol)

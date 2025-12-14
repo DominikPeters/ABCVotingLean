@@ -2,6 +2,7 @@ import ABCVoting.ABCRule
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
 import ABCVoting.Impossibilities.Peters.SingletonApprovers
+import ABCVoting.Impossibilities.Peters.RestrictToPlentiful
 
 open Finset ABCInstance
 
@@ -49,13 +50,15 @@ lemma W_card (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
 
 lemma stepH
     (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (P_from P_to : Profile)
     (h_from : ∀ v : V, P_from v ⊂ allCandidates)
     (h_to : ∀ v : V, P_to v ⊂ allCandidates)
     (i : V) (hi : i ∈ (mkInstance P_to h_to).voters)
     (hvar : (mkInstance P_to h_to).is_i_variant (mkInstance P_from h_from) i)
     (hsub : (mkInstance P_from h_from).approves i ⊂ (mkInstance P_to h_to).approves i)
+    (hpl_from : (mkInstance P_from h_from).plentiful)
+    (hpl_to : (mkInstance P_to h_to).plentiful)
     (A : Finset C) (hA : (mkInstance P_to h_to).approves i = A)
     (z : C) (hz : z ∈ W f hres P_to h_to)
     (hzA : z ∉ A)
@@ -88,7 +91,7 @@ lemma stepH
     have h_viol : W_from ∩ A ⊃ W_to ∩ A := by
       simpa [hW_from_inter] using h_inter_ss
     have hno :=
-      hsp inst_to inst_from i hi hvar (by simpa [inst_from, inst_to] using hsub) hres
+      hsp inst_to inst_from i hpl_to hpl_from hi hvar (by simpa [inst_from, inst_to] using hsub) hres
     have h_viol' :
         f.resolute_committee inst_from hres ∩ inst_to.approves i ⊃
           f.resolute_committee inst_to hres ∩ inst_to.approves i := by
@@ -112,13 +115,15 @@ lemma stepH
   exact hEq.symm
 
 lemma stepI
-    (f : ABCRule V C k) (hres : f.IsResolute) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (f : ABCRule V C k) (hres : f.IsResolute) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (P_true P_party : Profile)
     (h_true : ∀ v : V, P_true v ⊂ allCandidates)
     (h_party : ∀ v : V, P_party v ⊂ allCandidates)
     (i : V) (hi : i ∈ (mkInstance P_true h_true).voters)
     (hvar : (mkInstance P_true h_true).is_i_variant (mkInstance P_party h_party) i)
     (hsub : (mkInstance P_party h_party).approves i ⊂ (mkInstance P_true h_true).approves i)
+    (hpl_true : (mkInstance P_true h_true).plentiful)
+    (hpl_party : (mkInstance P_party h_party).plentiful)
     (W_true W_bad W_good : Finset C)
     (hW_true : W f hres P_true h_true = W_true)
     (hW_cases : W f hres P_party h_party = W_bad ∨ W f hres P_party h_party = W_good)
@@ -127,7 +132,7 @@ lemma stepI
     W f hres P_party h_party = W_good := by
   classical
   have hno :=
-    hsp (mkInstance P_true h_true) (mkInstance P_party h_party) i hi hvar hsub hres
+    hsp (mkInstance P_true h_true) (mkInstance P_party h_party) i hpl_true hpl_party hi hvar hsub hres
 
   have hW_ne_bad : W f hres P_party h_party ≠ W_bad := by
     intro hEq
@@ -185,8 +190,9 @@ lemma exclusive_singleton_of_unique_supporter (inst : ABCInstance V C k) (c : C)
       simpa [hv_eq]
 
 lemma singleton_approver_in_W (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality) (hsp : f.SatisfiesResoluteStrategyproofness)
+    (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (P : Profile) (hP : ∀ v : V, P v ⊂ allCandidates)
+    (hpl : (mkInstance P hP).plentiful)
     (c : C)
     (hsize : (mkInstance P hP).singleton_party_size c = 1)
     (hexcl : Peters.SingletonApprovers.is_exclusive_singleton (mkInstance P hP) c) :
@@ -201,7 +207,6 @@ lemma singleton_approver_in_W (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres :
   simpa [W] using
     (Peters.SingletonApprovers.singleton_approvers_elected
       (inst := mkInstance P hP) (c := c) (hc := hc) (hm := hm) (h_size := hthr) (hexcl := hexcl)
-      (f := f) (hwf := hwf) (hres := hres) (hprop := hprop) (hsp := hsp))
+      (f := f) (hwf := hwf) (hres := hres) (hprop := hprop) (hsp := hsp) (hpl := hpl))
 
 end Peters.BaseCaseCommon
-

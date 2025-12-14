@@ -2,6 +2,7 @@ import ABCVoting.ABCRule
 import ABCVoting.Axioms.Efficiency
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
+import ABCVoting.Impossibilities.Peters.RestrictToPlentiful
 import ABCVoting.Impossibilities.Peters.SingletonApprovers
 
 open Finset BigOperators ABCInstance
@@ -466,7 +467,7 @@ noncomputable def induced_rule (k : ℕ)
     (f : ABCRule (Fin (k + 1)) (Fin (k + 2)) (k + 1))
     (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality)
-    (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     ABCRule (Fin k) (Fin (k + 1)) k := by
   classical
   let g : ResoluteABCRule (Fin k) (Fin (k + 1)) k :=
@@ -512,12 +513,12 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
     (hres : f.IsResolute)
     (heff : f.SatisfiesWeakEfficiency)
     (hprop : f.SatisfiesProportionality)
-    (hsp : f.SatisfiesResoluteStrategyproofness) :
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     ∃ (f' : ABCRule (Fin k) (Fin (k + 1)) k),
       f'.IsResolute ∧
       f'.SatisfiesWeakEfficiency ∧
       f'.SatisfiesProportionality ∧
-      f'.SatisfiesResoluteStrategyproofness := by
+      Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f' := by
   classical
   let f' : ABCRule (Fin k) (Fin (k + 1)) k := induced_rule k f hres hprop hsp
   refine ⟨f', ?_, ?_, ?_, ?_⟩
@@ -809,14 +810,16 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
         hpl_ext hcand_ext hquota_ext
     exact (mem_project_committee_iff (k := k)
       (W := f.resolute_committee (extend_instance k inst) hres) (c := cand)).2 hc_ext
-  · -- strategyproofness
-    intro inst inst' i hi hvar hsub hres'
+  · -- strategyproofness on plentiful instances
+    intro inst inst' i hpl hpl' hi hvar hsub hres'
     intro hgain
     -- lift to extended instances and contradict `hsp`
     let embV : Fin k ↪ Fin (k + 1) := ⟨embed_voter k, embed_voter_injective k⟩
     let embC : Fin (k + 1) ↪ Fin (k + 2) := ⟨embed_candidate k, embed_candidate_injective k⟩
     let extInst := extend_instance k inst
     let extInst' := extend_instance k inst'
+    have hpl_ext : extInst.plentiful := plentiful_extend_instance (k := k) inst hpl
+    have hpl'_ext : extInst'.plentiful := plentiful_extend_instance (k := k) inst' hpl'
     have hi_ext : embV i ∈ extInst.voters :=
       Finset.mem_union_left _ (Finset.mem_map.2 ⟨i, hi, rfl⟩)
     have hvar_ext : extInst.is_i_variant extInst' (embV i) := by
@@ -917,8 +920,9 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
               = (f.resolute_committee extInst hres ∩ (inst.approves i).map embC).erase (dummy_candidate k) := by
                   simpa [Finset.erase_inter]
           _ = f.resolute_committee extInst hres ∩ (inst.approves i).map embC := by
-              apply Finset.erase_eq_of_not_mem
-              simpa [hdummy_not]
+              apply Finset.erase_eq_of_notMem
+              intro hx
+              exact hdummy_not ((Finset.mem_inter.mp hx).2)
       have hright :
           (f.resolute_committee extInst' hres).erase (dummy_candidate k) ∩ (inst.approves i).map embC =
             f.resolute_committee extInst' hres ∩ (inst.approves i).map embC := by
@@ -927,16 +931,21 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
               = (f.resolute_committee extInst' hres ∩ (inst.approves i).map embC).erase (dummy_candidate k) := by
                   simpa [Finset.erase_inter]
           _ = f.resolute_committee extInst' hres ∩ (inst.approves i).map embC := by
-              apply Finset.erase_eq_of_not_mem
-              simpa [hdummy_not]
+              apply Finset.erase_eq_of_notMem
+              intro hx
+              exact hdummy_not ((Finset.mem_inter.mp hx).2)
       -- finish
-      simpa [happ, hleft, hright] using hgain_erase
+      have hgain_core' :
+          (f.resolute_committee extInst hres ∩ (inst.approves i).map embC) ⊂
+            (f.resolute_committee extInst' hres ∩ (inst.approves i).map embC) := by
+        simpa [hleft, hright] using hgain_erase
+      simpa [happ] using hgain_core'
 
     have hgain_f :
         (f.resolute_committee extInst' hres ∩ extInst.approves (embV i)) ⊃
           (f.resolute_committee extInst hres ∩ extInst.approves (embV i)) := by
       simpa using hgain_core
 
-    exact hsp extInst extInst' (embV i) hi_ext hvar_ext hsub_ext hres hgain_f
+    exact hsp extInst extInst' (embV i) hpl_ext hpl'_ext hi_ext hvar_ext hsub_ext hres hgain_f
 
 end Peters.InductionK
