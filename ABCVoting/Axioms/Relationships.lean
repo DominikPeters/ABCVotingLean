@@ -88,6 +88,15 @@ theorem pjr_plus_implies_pjr (inst : ABCInstance V C k) (W : Finset C) :
       ⟨h_large, c, Finset.mem_sdiff.mpr ⟨hc.1, hc_not_in_W⟩, hc.2⟩
 
 /--
+Core implies Disjoint Core: The core is a stronger condition since it considers
+all possible alternatives T, while the disjoint core only considers T disjoint from W.
+-/
+theorem core_implies_disjoint_core (inst : ABCInstance V C k) (W : Finset C) :
+    inst.is_in_core W → inst.is_in_disjoint_core W := by
+  intro h_core S T l h_S_subset h_T_subset _ hl_pos h_cond
+  exact h_core S T l h_S_subset h_T_subset hl_pos h_cond
+
+/--
 Core implies FJR: If u_i(W) ≥ u_i(T) for some voter, and all voters have u_i(T) ≥ β,
 then that voter has u_i(W) ≥ β.
 -/
