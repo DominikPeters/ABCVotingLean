@@ -8,6 +8,8 @@ pp.unicode.fun = true # pretty-prints `fun a ↦ b`
 relaxedAutoImplicit = false
 weak.linter.mathlibStandardSet = true
 maxSynthPendingDepth = 3
+linter.unnecessarySimpa = false
+linter.style.longLine = false
 
 [[require]]
 name = "mathlib"
