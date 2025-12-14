@@ -216,7 +216,7 @@ lemma d_in_candidates : (3 : C) ∈ (mkInstance P₁_₅ P₁_₅_proper).candid
 
 lemma candidates_card : (mkInstance P₁_₅ P₁_₅_proper).candidates.card = k + 1 := by decide
 
-lemma d_in_W_P₁_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma d_in_W_P₁_₅ (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (3 : C) ∈ W f hres P₁_₅ P₁_₅_proper :=
   SingletonApprovers.singleton_approvers_elected
@@ -312,7 +312,7 @@ lemma v₁_in_voters : v₁ ∈ (mkInstance P₁_₅ P₁_₅_proper).voters := 
 -- ============================================================================
 
 /-- Key: if f(P₁) = acd, then f(P₁_₅) = acd -/
-lemma step1_f_P₁_₅_eq_acd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step1_f_P₁_₅_eq_acd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₁_₅ P₁_₅_proper = comm_bcd := by
@@ -329,7 +329,7 @@ lemma step1_f_P₁_₅_eq_acd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres :
   simpa [comm_bcd] using h
 
 /-- Next: if f(P₁) = acd, then f(P₂) = bcd -/
-lemma step2_f_P₂_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step2_f_P₂_eq_bcd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₂ P₂_proper = comm_acd := by
@@ -343,7 +343,9 @@ lemma step2_f_P₂_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.I
   set inst₂ := mkInstance P₂ P₂_proper with hinst₂
 
   have hW_mem := f.resolute_committee_mem inst₂ hres
-  have hW_card : W₂.card = k := (hwf inst₂).2 W₂ hW_mem |>.1
+  have hW_card : W₂.card = k := by
+    have hpl : inst₂.plentiful := by simpa [hinst₂] using P₂_plentiful
+    exact (hwf inst₂ hpl).2 W₂ hW_mem |>.1
 
   have hW_cases : W₂ = comm_abd ∨ W₂ = comm_acd := by
     have hcard3 : W₂.card = 3 := by
@@ -474,13 +476,13 @@ lemma singleton_party_size_b_P₂_₅ :
     (mkInstance P₂_₅ P₂_₅_proper).singleton_party_size (0 : C) = 1 := by
   decide
 
-lemma b_in_W_P₂_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma b_in_W_P₂_₅ (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₂_₅ P₂_₅_proper :=
   singleton_approver_in_W f hwf hres hprop hsp P₂_₅ P₂_₅_proper P₂_₅_plentiful (0 : C)
     singleton_party_size_b_P₂_₅ b_exclusive_singleton_P₂_₅
 
-lemma step3_f_P₂_₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step3_f_P₂_₅_eq_bcd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₂_₅ P₂_₅_proper = comm_acd := by
@@ -519,7 +521,7 @@ lemma b_in_W_P₃ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
     (0 : C) ∈ W f hres P₃ P₃_proper :=
   mem_W_of_prop_singleton_one f hres hprop P₃ P₃_proper P₃_is_party_list (0 : C) (by decide)
 
-lemma step4_f_P₃_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step4_f_P₃_eq_abd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₃ P₃_proper = comm_abd := by
@@ -529,7 +531,7 @@ lemma step4_f_P₃_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.I
   have ha : (1 : C) ∈ W f hres P₃ P₃_proper := a_in_W_P₃ f hres hprop
   have hb : (0 : C) ∈ W f hres P₃ P₃_proper := b_in_W_P₃ f hres hprop
   have hcard3 : (W f hres P₃ P₃_proper).card = 3 := by
-    simpa [k] using (W_card f hwf hres P₃ P₃_proper)
+    simpa [k] using (W_card f hwf hres P₃ P₃_proper P₃_plentiful)
   have hW_cases : W f hres P₃ P₃_proper = comm_abc ∨ W f hres P₃ P₃_proper = comm_abd :=
     card3_mem_ab_cases _ hcard3 ha hb
 
@@ -571,13 +573,13 @@ lemma singleton_party_size_b_P₃_₅ :
     (mkInstance P₃_₅ P₃_₅_proper).singleton_party_size (0 : C) = 1 := by
   decide
 
-lemma b_in_W_P₃_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma b_in_W_P₃_₅ (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₃_₅ P₃_₅_proper :=
   singleton_approver_in_W f hwf hres hprop hsp P₃_₅ P₃_₅_proper P₃_₅_plentiful (0 : C)
     singleton_party_size_b_P₃_₅ b_exclusive_singleton_P₃_₅
 
-lemma step5_f_P₃_₅_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step5_f_P₃_₅_eq_abd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₃_₅ P₃_₅_proper = comm_abd := by
@@ -616,7 +618,7 @@ lemma c_in_W_P₄ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
     (2 : C) ∈ W f hres P₄ P₄_proper :=
   mem_W_of_prop_singleton_one f hres hprop P₄ P₄_proper P₄_is_party_list (2 : C) (by decide)
 
-lemma step6_f_P₄_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step6_f_P₄_eq_abc (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₄ P₄_proper = comm_abc := by
@@ -626,7 +628,7 @@ lemma step6_f_P₄_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.I
   have hb : (0 : C) ∈ W f hres P₄ P₄_proper := b_in_W_P₄ f hres hprop
   have hc : (2 : C) ∈ W f hres P₄ P₄_proper := c_in_W_P₄ f hres hprop
   have hcard3 : (W f hres P₄ P₄_proper).card = 3 := by
-    simpa [k] using (W_card f hwf hres P₄ P₄_proper)
+    simpa [k] using (W_card f hwf hres P₄ P₄_proper P₄_plentiful)
   have hW_cases : W f hres P₄ P₄_proper = comm_abc ∨ W f hres P₄ P₄_proper = comm_acd :=
     card3_mem_bc_cases _ hcard3 hb hc
 
@@ -673,13 +675,13 @@ lemma singleton_party_size_b_P₄_₅ :
     (mkInstance P₄_₅ P₄_₅_proper).singleton_party_size (0 : C) = 1 := by
   decide
 
-lemma b_in_W_P₄_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma b_in_W_P₄_₅ (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₄_₅ P₄_₅_proper :=
   singleton_approver_in_W f hwf hres hprop hsp P₄_₅ P₄_₅_proper P₄_₅_plentiful (0 : C)
     singleton_party_size_b_P₄_₅ b_exclusive_singleton_P₄_₅
 
-lemma step7_f_P₄_₅_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step7_f_P₄_₅_eq_abc (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₄_₅ P₄_₅_proper = comm_abc := by
@@ -718,7 +720,7 @@ lemma d_in_W_P₅ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
     (3 : C) ∈ W f hres P₅ P₅_proper :=
   mem_W_of_prop_singleton_one f hres hprop P₅ P₅_proper P₅_is_party_list (3 : C) (by decide)
 
-lemma step8_f_P₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step8_f_P₅_eq_bcd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₅ P₅_proper = comm_acd := by
@@ -728,7 +730,7 @@ lemma step8_f_P₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.I
   have hb : (0 : C) ∈ W f hres P₅ P₅_proper := b_in_W_P₅ f hres hprop
   have hd : (3 : C) ∈ W f hres P₅ P₅_proper := d_in_W_P₅ f hres hprop
   have hcard3 : (W f hres P₅ P₅_proper).card = 3 := by
-    simpa [k] using (W_card f hwf hres P₅ P₅_proper)
+    simpa [k] using (W_card f hwf hres P₅ P₅_proper P₅_plentiful)
   have hW_cases : W f hres P₅ P₅_proper = comm_abd ∨ W f hres P₅ P₅_proper = comm_acd :=
     card3_mem_bd_cases _ hcard3 hb hd
 
@@ -770,13 +772,13 @@ lemma singleton_party_size_b_P₅_₅ :
     (mkInstance P₅_₅ P₅_₅_proper).singleton_party_size (0 : C) = 1 := by
   decide
 
-lemma b_in_W_P₅_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma b_in_W_P₅_₅ (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₅_₅ P₅_₅_proper :=
   singleton_approver_in_W f hwf hres hprop hsp P₅_₅ P₅_₅_proper P₅_₅_plentiful (0 : C)
     singleton_party_size_b_P₅_₅ b_exclusive_singleton_P₅_₅
 
-lemma step9_f_P₅_₅_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step9_f_P₅_₅_eq_bcd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₅_₅ P₅_₅_proper = comm_acd := by
@@ -815,7 +817,7 @@ lemma b_in_W_P₆ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
     (0 : C) ∈ W f hres P₆ P₆_proper :=
   mem_W_of_prop_singleton_one f hres hprop P₆ P₆_proper P₆_is_party_list (0 : C) (by decide)
 
-lemma step10_f_P₆_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step10_f_P₆_eq_abd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₆ P₆_proper = comm_abd := by
@@ -825,7 +827,7 @@ lemma step10_f_P₆_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.
   have ha : (1 : C) ∈ W f hres P₆ P₆_proper := a_in_W_P₆ f hres hprop
   have hb : (0 : C) ∈ W f hres P₆ P₆_proper := b_in_W_P₆ f hres hprop
   have hcard3 : (W f hres P₆ P₆_proper).card = 3 := by
-    simpa [k] using (W_card f hwf hres P₆ P₆_proper)
+    simpa [k] using (W_card f hwf hres P₆ P₆_proper P₆_plentiful)
   have hW_cases : W f hres P₆ P₆_proper = comm_abc ∨ W f hres P₆ P₆_proper = comm_abd :=
     card3_mem_ab_cases _ hcard3 ha hb
 
@@ -868,13 +870,13 @@ lemma singleton_party_size_b_P₆_₅ :
     (mkInstance P₆_₅ P₆_₅_proper).singleton_party_size (0 : C) = 1 := by
   decide
 
-lemma b_in_W_P₆_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma b_in_W_P₆_₅ (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (0 : C) ∈ W f hres P₆_₅ P₆_₅_proper :=
   singleton_approver_in_W f hwf hres hprop hsp P₆_₅ P₆_₅_proper P₆_₅_plentiful (0 : C)
     singleton_party_size_b_P₆_₅ b_exclusive_singleton_P₆_₅
 
-lemma step11_f_P₆_₅_eq_abd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step11_f_P₆_₅_eq_abd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₆_₅ P₆_₅_proper = comm_abd := by
@@ -913,7 +915,7 @@ lemma c_in_W_P₇ (f : ABCRule V C k) (hres : f.IsResolute) (hprop : f.Satisfies
     (2 : C) ∈ W f hres P₇ P₇_proper :=
   mem_W_of_prop_singleton_one f hres hprop P₇ P₇_proper P₇_is_party_list (2 : C) (by decide)
 
-lemma step12_f_P₇_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step12_f_P₇_eq_abc (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₇ P₇_proper = comm_abc := by
@@ -923,7 +925,7 @@ lemma step12_f_P₇_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.
   have hb : (0 : C) ∈ W f hres P₇ P₇_proper := b_in_W_P₇ f hres hprop
   have hc : (2 : C) ∈ W f hres P₇ P₇_proper := c_in_W_P₇ f hres hprop
   have hcard3 : (W f hres P₇ P₇_proper).card = 3 := by
-    simpa [k] using (W_card f hwf hres P₇ P₇_proper)
+    simpa [k] using (W_card f hwf hres P₇ P₇_proper P₇_plentiful)
   have hW_cases : W f hres P₇ P₇_proper = comm_abc ∨ W f hres P₇ P₇_proper = comm_acd :=
     card3_mem_bc_cases _ hcard3 hb hc
   have hW_cases' : W f hres P₇ P₇_proper = comm_acd ∨ W f hres P₇ P₇_proper = comm_abc := by
@@ -970,13 +972,13 @@ lemma singleton_party_size_c_P₇_₅ :
     (mkInstance P₇_₅ P₇_₅_proper).singleton_party_size (2 : C) = 1 := by
   decide
 
-lemma c_in_W_P₇_₅ (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma c_in_W_P₇_₅ (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     (2 : C) ∈ W f hres P₇_₅ P₇_₅_proper :=
   singleton_approver_in_W f hwf hres hprop hsp P₇_₅ P₇_₅_proper P₇_₅_plentiful (2 : C)
     singleton_party_size_c_P₇_₅ c_exclusive_singleton_P₇_₅
 
-lemma step13_f_P₇_₅_eq_abc (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma step13_f_P₇_₅_eq_abc (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     W f hres P₇_₅ P₇_₅_proper = comm_abc := by
@@ -1007,7 +1009,7 @@ lemma P₁_ballot_strict_subset_P₇_₅ :
     (mkInstance P₁ P₁_proper).approves v₃ ⊂ (mkInstance P₇_₅ P₇_₅_proper).approves v₃ := by
   decide
 
-theorem contradiction_from_P₁_eq_bcd (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+theorem contradiction_from_P₁_eq_bcd (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (h_P₁ : W f hres P₁ P₁_proper = comm_bcd) :
     False := by

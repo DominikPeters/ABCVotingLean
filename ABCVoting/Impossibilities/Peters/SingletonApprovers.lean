@@ -328,7 +328,7 @@ Plentiful strategyproofness analogue of `sp_preserves_committee_ne_strict`.
 -/
 lemma sp_preserves_committee_ne_strict_on_plentiful (f : ABCRule V C k)
     (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
-    (hwf : f.IsWellFormed)
+    (hwf : IsWellFormedOnPlentiful f)
     (inst inst' : ABCInstance V C k) (i : V)
     (hpl : inst.plentiful) (hpl' : inst'.plentiful)
     (hi : i ∈ inst.voters)
@@ -342,7 +342,7 @@ lemma sp_preserves_committee_ne_strict_on_plentiful (f : ABCRule V C k)
   have hleft_eq : f.resolute_committee inst' hres ∩ inst.approves i = inst.approves i := by
     rw [hcontra, Finset.inter_self]
   have hW_card : (f.resolute_committee inst hres).card = k :=
-    (hwf inst).2 _ (f.resolute_committee_mem inst hres) |>.1
+    (hwf inst hpl).2 _ (f.resolute_committee_mem inst hres) |>.1
   have hcard_inter_le : (f.resolute_committee inst hres ∩ inst.approves i).card ≤ k := by
     have hsubset : f.resolute_committee inst hres ∩ inst.approves i ⊆ f.resolute_committee inst hres :=
       Finset.inter_subset_left
@@ -423,7 +423,7 @@ lemma c_in_committee_induction_step
     (hm_ge_2 : inst.candidates.card ≥ 2)
     (hexcl : is_exclusive_singleton inst c)
     (f : ABCRule V C k)
-    (hwf : f.IsWellFormed)
+    (hwf : IsWellFormedOnPlentiful f)
     (hres : f.IsResolute)
     (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (S : Finset V) (i : V)
@@ -554,7 +554,7 @@ lemma c_in_committee_induction_step
     -- Since it's not C \ {c}, it must contain c
 
     -- Key lemma: when m = k+1, a size-k committee either contains c or equals C \ {c}
-    have h_wf := hwf (profile_with_switched inst c hc hm_ge_2 (S.erase i))
+    have h_wf := hwf (profile_with_switched inst c hc hm_ge_2 (S.erase i)) hpl_Si
     have ⟨_, hW_prop⟩ := h_wf
     have ⟨hW_card, hW_sub⟩ := hW_prop _ (f.resolute_committee_mem _ hres)
     -- The committee W has |W| = k and W ⊆ candidates (size k+1)
@@ -612,7 +612,7 @@ theorem singleton_approvers_elected {k : ℕ}
     (h_size : inst.singleton_party_size c * k ≥ inst.voters.card)
     (hexcl : is_exclusive_singleton inst c)
     (f : ABCRule V C k)
-    (hwf : f.IsWellFormed)
+    (hwf : IsWellFormedOnPlentiful f)
     (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality)
     (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
@@ -731,7 +731,7 @@ theorem committee_not_complement {k : ℕ}
     (h_size : inst.singleton_party_size c * k ≥ inst.voters.card)
     (hexcl : is_exclusive_singleton inst c)
     (f : ABCRule V C k)
-    (hwf : f.IsWellFormed)
+    (hwf : IsWellFormedOnPlentiful f)
     (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality)
     (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)

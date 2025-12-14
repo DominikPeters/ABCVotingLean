@@ -5,7 +5,7 @@ import ABCVoting.ABCRule
 import ABCVoting.Axioms.Efficiency
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
-import ABCVoting.Impossibilities.Peters.StrategyproofnessPlentiful
+import ABCVoting.Impossibilities.Peters.RestrictToPlentiful
 
 open Finset BigOperators ABCInstance
 
@@ -260,11 +260,13 @@ noncomputable def induced_rule (k q : ℕ) (hq : 0 < q)
       simpa [expand_voters, this]
 
 lemma induced_rule_wellFormed (k q : ℕ) (hq : 0 < q)
-    (f : ABCRule (Fin (q * k)) (Cand k) k) (hwf : f.IsWellFormed) :
-    (induced_rule k q hq f).IsWellFormed := by
+    (f : ABCRule (Fin (q * k)) (Cand k) k) (hwf : IsWellFormedOnPlentiful f) :
+    IsWellFormedOnPlentiful (induced_rule k q hq f) := by
   classical
-  intro inst
-  simpa [induced_rule] using hwf (expand_voters k q hq inst)
+  intro inst hpl
+  have hpl' : (expand_voters k q hq inst).plentiful :=
+    (plentiful_expand_voters_iff (k := k) (q := q) hq inst).2 hpl
+  simpa [induced_rule] using hwf (expand_voters k q hq inst) hpl'
 
 lemma induced_rule_resolute (k q : ℕ) (hq : 0 < q)
     (f : ABCRule (Fin (q * k)) (Cand k) k) (hres : f.IsResolute) :
@@ -586,13 +588,13 @@ theorem induction_n (k q : ℕ)
     (hk : 3 ≤ k)
     (hq : 1 ≤ q)
     (f : ABCRule (Fin (q * k)) (Cand k) k)
-    (hwf : f.IsWellFormed)
+    (hwf : IsWellFormedOnPlentiful f)
     (hres : f.IsResolute)
     (heff : f.SatisfiesWeakEfficiency)
     (hprop : f.SatisfiesProportionality)
     (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     ∃ (f' : ABCRule (Fin k) (Cand k) k),
-      f'.IsWellFormed ∧
+      IsWellFormedOnPlentiful f' ∧
       f'.IsResolute ∧
       f'.SatisfiesWeakEfficiency ∧
       f'.SatisfiesProportionality ∧
@@ -665,8 +667,10 @@ theorem induction_n (k q : ℕ)
       rw [hA_old] at h_not_better
 
       -- Use the size property of C_t and C_t1
-      have h_size_t : C_t.card = k := (hwf (chain t)).2 _ (f.resolute_committee_mem (chain t) hres) |>.1
-      have h_size_t1 : C_t1.card = k := (hwf (chain (t + 1))).2 _ (f.resolute_committee_mem (chain (t + 1)) hres) |>.1
+      have h_size_t : C_t.card = k :=
+        (hwf (chain t) hpl_t).2 _ (f.resolute_committee_mem (chain t) hres) |>.1
+      have h_size_t1 : C_t1.card = k :=
+        (hwf (chain (t + 1)) hpl_t1).2 _ (f.resolute_committee_mem (chain (t + 1)) hres) |>.1
 
       -- Lemma logic inline:
       -- C_t, C_t1 are size k subsets of Fin (k+1).

@@ -108,7 +108,7 @@ def extend_instance (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
                   exact Fin.ext heq⟩
             else {dummy_candidate k}) =
             (inst.approves v0).map ⟨embed_candidate k, embed_candidate_injective k⟩ := by
-        simp [hlt, embed_voter, embed_candidate]
+        simp [embed_voter]
       -- subset of mapped candidates
       have hsub0 : inst.approves v0 ⊆ inst.candidates := inst.approves_subset v0 hv0
       have hsub1 :
@@ -165,6 +165,120 @@ def extend_instance (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
     rw [hcand_card]
     exact Nat.add_le_add_right inst.k_le_m 1
 
+lemma extend_candidates_card_eq (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
+    (extend_instance k inst).candidates.card = inst.candidates.card + 1 := by
+  classical
+  let embC : Fin (k + 1) ↪ Fin (k + 2) := ⟨embed_candidate k, embed_candidate_injective k⟩
+  have hdummy : dummy_candidate k ∉ inst.candidates.map embC := by
+    intro hx
+    rcases Finset.mem_map.1 hx with ⟨c, _, hEq⟩
+    exact dummy_not_embedded k c (by simpa [embC] using hEq)
+  have hdisj : Disjoint (inst.candidates.map embC) {dummy_candidate k} :=
+    Finset.disjoint_singleton_right.2 hdummy
+  have hcard_union :
+      (inst.candidates.map embC ∪ {dummy_candidate k}).card =
+        (inst.candidates.map embC).card + 1 := by
+    simpa [Finset.card_singleton] using Finset.card_union_of_disjoint hdisj
+  have hcard_map : (inst.candidates.map embC).card = inst.candidates.card := by
+    simpa using (Finset.card_map (s := inst.candidates) embC)
+  calc
+    (extend_instance k inst).candidates.card
+        = (inst.candidates.map embC ∪ {dummy_candidate k}).card := rfl
+    _ = (inst.candidates.map embC).card + 1 := hcard_union
+    _ = inst.candidates.card + 1 := by simpa [hcard_map]
+
+lemma extend_candidates_card_bounds (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
+    k + 1 ≤ (extend_instance k inst).candidates.card ∧
+      (extend_instance k inst).candidates.card ≤ k + 2 := by
+  classical
+  have hcard_eq := extend_candidates_card_eq (k := k) inst
+  have hupper_inst : inst.candidates.card ≤ k + 1 := by
+    simpa using (Finset.card_le_univ (s := inst.candidates))
+  have hlower_inst : k ≤ inst.candidates.card := inst.k_le_m
+  constructor
+  · have : k + 1 ≤ inst.candidates.card + 1 := Nat.add_le_add_right hlower_inst 1
+    simpa [hcard_eq] using this
+  · have : inst.candidates.card + 1 ≤ k + 2 := Nat.add_le_add_right hupper_inst 1
+    simpa [hcard_eq] using this
+
+lemma plentiful_extend_instance (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
+    inst.plentiful → (extend_instance k inst).plentiful := by
+  classical
+  intro hpl
+  -- The embedded approved candidates plus the dummy candidate are all approved in the extension.
+  let emb : Fin (k + 1) ↪ Fin (k + 2) := ⟨embed_candidate k, embed_candidate_injective k⟩
+  have hsubset :
+      inst.approvedCandidates.map emb ∪ {dummy_candidate k} ⊆
+        (extend_instance k inst).approvedCandidates := by
+    intro x hx
+    rcases Finset.mem_union.1 hx with hx | hx
+    · rcases Finset.mem_map.1 hx with ⟨c, hc, rfl⟩
+      rcases (by
+          simpa [ABCInstance.approvedCandidates] using hc) with ⟨v, hv, hcv⟩
+      -- embedded voter approves the embedded candidate
+      have hv' : embed_voter k v ∈ (extend_instance k inst).voters :=
+        Finset.mem_union_left _ (Finset.mem_map.2 ⟨v, hv, rfl⟩)
+      have hmem :
+          emb c ∈ (extend_instance k inst).approves (embed_voter k v) := by
+        have hlt : (embed_voter k v).val < k := by
+          simpa [embed_voter] using v.isLt
+        have hvEq : (⟨(embed_voter k v).val, hlt⟩ : Fin k) = v := by
+          apply Fin.ext
+          simp [embed_voter]
+        simpa [extend_instance, hlt, emb, hvEq] using hcv
+      have : emb c ∈ (extend_instance k inst).voters.biUnion (extend_instance k inst).approves :=
+        Finset.mem_biUnion.2 ⟨embed_voter k v, hv', hmem⟩
+      simpa [ABCInstance.approvedCandidates] using this
+    · have hx' : x = dummy_candidate k := by
+        simpa using (Finset.mem_singleton.1 hx)
+      subst hx'
+      -- dummy voter approves dummy candidate
+      have hv' : dummy_voter k ∈ (extend_instance k inst).voters :=
+        Finset.mem_union_right _ (Finset.mem_singleton_self _)
+      have hmem : dummy_candidate k ∈ (extend_instance k inst).approves (dummy_voter k) := by
+        have : ¬(dummy_voter k).val < k := by simp [dummy_voter]
+        simp [extend_instance, dummy_voter]
+      have : dummy_candidate k ∈
+          (extend_instance k inst).voters.biUnion (extend_instance k inst).approves :=
+        Finset.mem_biUnion.2 ⟨dummy_voter k, hv', hmem⟩
+      simpa [ABCInstance.approvedCandidates] using this
+  have hcard_le :
+      inst.approvedCandidates.card + 1 ≤ (extend_instance k inst).approvedCandidates.card := by
+    -- use subset + card computation on `map ∪ {dummy}`
+    have hcard_map : (inst.approvedCandidates.map emb).card = inst.approvedCandidates.card := by
+      simpa using (Finset.card_map (s := inst.approvedCandidates) emb)
+    have hdummy : dummy_candidate k ∉ inst.approvedCandidates.map emb := by
+      intro hx
+      rcases Finset.mem_map.1 hx with ⟨c, _, hEq⟩
+      exact dummy_not_embedded k c (by simpa [emb] using hEq)
+    have hdisj : Disjoint (inst.approvedCandidates.map emb) {dummy_candidate k} :=
+      Finset.disjoint_singleton_right.2 hdummy
+    have hcard_union :
+        (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card =
+          (inst.approvedCandidates.map emb).card + 1 := by
+      simpa [Finset.card_singleton] using Finset.card_union_of_disjoint hdisj
+    have hcard_subset :
+        (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card ≤
+          (extend_instance k inst).approvedCandidates.card :=
+      Finset.card_le_card hsubset
+    -- combine
+    have hcard_eq :
+        inst.approvedCandidates.card + 1 =
+          (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card := by
+      calc
+        inst.approvedCandidates.card + 1
+            = (inst.approvedCandidates.map emb).card + 1 := by simpa [hcard_map]
+        _ = (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card := by
+            simpa using hcard_union.symm
+    have : inst.approvedCandidates.card + 1 ≤ (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card := by
+      simpa [hcard_eq] using (Nat.le_refl (inst.approvedCandidates.card + 1))
+    exact le_trans this hcard_subset
+  -- conclude `k+1 ≤ ...` from `k ≤ ...` for the original instance
+  have : k + 1 ≤ (extend_instance k inst).approvedCandidates.card := by
+    have : k ≤ inst.approvedCandidates.card := hpl
+    exact le_trans (Nat.add_le_add_right this 1) hcard_le
+  simpa [ABCInstance.plentiful] using this
+
 /--
 The dummy candidate is approved only by the dummy voter.
 This means its singleton party has size 1, which equals (k+1)/(k+1) = 1.
@@ -174,38 +288,32 @@ lemma dummy_singleton_party (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) 
     {dummy_voter k} := by
   classical
   ext v
-  simp only [ABCInstance.singleton_party, Finset.mem_filter, Finset.mem_singleton]
   constructor
   · intro hv
-    rcases hv with ⟨hvoters, happ⟩
+    rcases Finset.mem_filter.1 hv with ⟨hvoters, happ⟩
     rcases Finset.mem_union.1 hvoters with hvoters | hvoters
-    · -- embedded voter: approval is a mapped set, cannot equal singleton dummy
-      rcases Finset.mem_map.1 hvoters with ⟨v0, hv0, rfl⟩
+    · rcases Finset.mem_map.1 hvoters with ⟨v0, hv0, rfl⟩
       have hlt : (embed_voter k v0).val < k := by
         simpa [embed_voter] using v0.isLt
       have happ' :
           (inst.approves v0).map ⟨embed_candidate k, embed_candidate_injective k⟩ =
             {dummy_candidate k} := by
         simpa [extend_instance, hlt] using happ
-      -- dummy_candidate not in the image of embed_candidate
-      have hmem :
-          dummy_candidate k ∈ (inst.approves v0).map ⟨embed_candidate k, embed_candidate_injective k⟩ := by
-        -- avoid simp rewriting `mem_map` to an existential
-        rw [happ']
-        simp
+      have hmem : dummy_candidate k ∈ (inst.approves v0).map
+          ⟨embed_candidate k, embed_candidate_injective k⟩ := by
+        simpa [happ'] using Finset.mem_singleton_self _
       rcases Finset.mem_map.1 hmem with ⟨c, _, hc⟩
-      -- contradiction
-      exfalso
-      exact dummy_not_embedded k c hc
-    · -- dummy voter
-      have : v = dummy_voter k := by simpa using hvoters
-      exact this
+      exact (dummy_not_embedded k c hc).elim
+    · have hvd : v = dummy_voter k := by simpa using hvoters
+      simpa [hvd]
   · intro hv
-    subst hv
+    have hvd : v = dummy_voter k := by simpa using hv
+    subst hvd
+    apply Finset.mem_filter.2
     refine ⟨?_, ?_⟩
     · exact Finset.mem_union_right _ (Finset.mem_singleton_self _)
-    · have : ¬(k < k) := Nat.lt_irrefl k
-      simp [extend_instance, dummy_voter, this]
+    · have hlt : ¬(dummy_voter k).val < k := by simp [dummy_voter]
+      simp [extend_instance, dummy_voter]
 
 lemma dummy_supporters (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
     (extend_instance k inst).supporters (dummy_candidate k) = {dummy_voter k} := by
@@ -235,7 +343,7 @@ lemma dummy_supporters (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
     have : ¬(k < k) := Nat.lt_irrefl k
     refine ⟨?_, ?_⟩
     · exact Finset.mem_union_right _ (Finset.mem_singleton_self _)
-    · simp [extend_instance, dummy_voter, this]
+    · simp [extend_instance, dummy_voter]
 
 lemma dummy_exclusive_singleton (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
     is_exclusive_singleton (extend_instance k inst) (dummy_candidate k) := by
@@ -245,6 +353,70 @@ lemma dummy_exclusive_singleton (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 
     exact Finset.singleton_nonempty _
   · -- supporters = singleton_party
     rw [dummy_supporters (k := k) inst, dummy_singleton_party (k := k) inst]
+
+lemma dummy_in_resolute_extend (k : ℕ)
+    (f : ABCRule (Fin (k + 1)) (Fin (k + 2)) (k + 1))
+    (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
+    (hprop : f.SatisfiesProportionality)
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
+    (inst : ABCInstance (Fin k) (Fin (k + 1)) k) (hpl : inst.plentiful) :
+    dummy_candidate k ∈ f.resolute_committee (extend_instance k inst) hres := by
+  classical
+  have hcand : dummy_candidate k ∈ (extend_instance k inst).candidates := by
+    simp [extend_instance]
+  have hcard_eq := extend_candidates_card_eq (k := k) inst
+  have hupper_inst : inst.candidates.card ≤ k + 1 := by
+    simpa using (Finset.card_le_univ (s := inst.candidates))
+  have hlower_inst : k ≤ inst.candidates.card := inst.k_le_m
+  by_cases hinst_card : inst.candidates.card = k
+  · -- then ext candidates have size k+1, so committee must equal candidates
+    have hcard_ext : (extend_instance k inst).candidates.card = k + 1 := by
+      linarith [hcard_eq, hinst_card]
+    have hpl_ext : (extend_instance k inst).plentiful := plentiful_extend_instance (k := k) inst hpl
+    let W := f.resolute_committee (extend_instance k inst) hres
+    have hW_mem := f.resolute_committee_mem (extend_instance k inst) hres
+    have hW_props := (hwf (extend_instance k inst) hpl_ext).2 W hW_mem
+    have hW_card : W.card = k + 1 := by simpa using hW_props.1
+    have hW_sub : W ⊆ (extend_instance k inst).candidates := hW_props.2
+    have hW_eq_cands : W = (extend_instance k inst).candidates := by
+      apply Finset.eq_of_subset_of_card_le hW_sub
+      have : (extend_instance k inst).candidates.card ≤ W.card := by
+        simpa [hcard_ext, hW_card]
+      exact this
+    have hmemW : dummy_candidate k ∈ W := by
+      simpa [hW_eq_cands] using hcand
+    simpa [W] using hmemW
+  · -- inst.candidates.card = k+1, so ext has k+2; use singleton approvers
+    have hinst_card' : inst.candidates.card = k + 1 := by
+      have hne' : k ≠ inst.candidates.card := by
+        intro h
+        exact hinst_card (h.symm)
+      have : inst.candidates.card ≥ k + 1 :=
+        Nat.succ_le_of_lt (Nat.lt_of_le_of_ne hlower_inst hne')
+      exact le_antisymm hupper_inst this
+    have hm : (extend_instance k inst).candidates.card = k + 2 := by
+      linarith [hcard_eq, hinst_card']
+    have hsing : (extend_instance k inst).singleton_party_size (dummy_candidate k) = 1 := by
+      have hsize := ABCInstance.singleton_party_size_eq_card
+        (inst := extend_instance k inst) (c := dummy_candidate k)
+      have hparty := dummy_singleton_party (k := k) inst
+      calc
+        (extend_instance k inst).singleton_party_size (dummy_candidate k)
+            = ((extend_instance k inst).singleton_party (dummy_candidate k)).card := hsize
+        _ = ({dummy_voter k} : Finset (Fin (k + 1))).card := by simpa [hparty]
+        _ = 1 := by simp
+    have hvoters_le : (extend_instance k inst).voters.card ≤ k + 1 := by
+      simpa using (Finset.card_le_univ (s := (extend_instance k inst).voters))
+    have h_size : (extend_instance k inst).singleton_party_size (dummy_candidate k) * (k + 1) ≥
+        (extend_instance k inst).voters.card := by
+      simpa [hsing, Nat.one_mul] using hvoters_le
+    have hexcl : is_exclusive_singleton (extend_instance k inst) (dummy_candidate k) :=
+      dummy_exclusive_singleton (k := k) inst
+    have hpl_ext : (extend_instance k inst).plentiful :=
+      plentiful_extend_instance (k := k) inst hpl
+    exact singleton_approvers_elected (inst := extend_instance k inst) (c := dummy_candidate k)
+      hcand hm h_size hexcl f hwf hres hprop hsp hpl_ext
+
 
 -- ============================================================================
 -- COMMITTEE PROJECTION (DROP DUMMY CANDIDATE)
@@ -372,84 +544,6 @@ lemma map_project_committee_eq_erase_dummy (k : ℕ) (W : Finset (Fin (k + 2))) 
       (mem_project_committee_iff (k := k) (W := W) (c := c)).2 hcW
     exact Finset.mem_map.2 ⟨c, hcproj, hxc⟩
 
-lemma plentiful_extend_instance (k : ℕ) (inst : ABCInstance (Fin k) (Fin (k + 1)) k) :
-    inst.plentiful → (extend_instance k inst).plentiful := by
-  classical
-  intro hpl
-  -- The embedded approved candidates plus the dummy candidate are all approved in the extension.
-  let emb : Fin (k + 1) ↪ Fin (k + 2) := ⟨embed_candidate k, embed_candidate_injective k⟩
-  have hsubset :
-      inst.approvedCandidates.map emb ∪ {dummy_candidate k} ⊆
-        (extend_instance k inst).approvedCandidates := by
-    intro x hx
-    rcases Finset.mem_union.1 hx with hx | hx
-    · rcases Finset.mem_map.1 hx with ⟨c, hc, rfl⟩
-      rcases (by
-          simpa [ABCInstance.approvedCandidates] using hc) with ⟨v, hv, hcv⟩
-      -- embedded voter approves the embedded candidate
-      have hv' : embed_voter k v ∈ (extend_instance k inst).voters :=
-        Finset.mem_union_left _ (Finset.mem_map.2 ⟨v, hv, rfl⟩)
-      have hmem :
-          emb c ∈ (extend_instance k inst).approves (embed_voter k v) := by
-        have hlt : (embed_voter k v).val < k := by
-          simpa [embed_voter] using v.isLt
-        have hvEq : (⟨(embed_voter k v).val, hlt⟩ : Fin k) = v := by
-          apply Fin.ext
-          simp [embed_voter]
-        simpa [extend_instance, hlt, emb, hvEq] using hcv
-      have : emb c ∈ (extend_instance k inst).voters.biUnion (extend_instance k inst).approves :=
-        Finset.mem_biUnion.2 ⟨embed_voter k v, hv', hmem⟩
-      simpa [ABCInstance.approvedCandidates] using this
-    · have hx' : x = dummy_candidate k := by
-        simpa using (Finset.mem_singleton.1 hx)
-      subst hx'
-      -- dummy voter approves dummy candidate
-      have hv' : dummy_voter k ∈ (extend_instance k inst).voters :=
-        Finset.mem_union_right _ (Finset.mem_singleton_self _)
-      have hmem : dummy_candidate k ∈ (extend_instance k inst).approves (dummy_voter k) := by
-        have : ¬(dummy_voter k).val < k := by simp [dummy_voter]
-        simp [extend_instance, dummy_voter, this]
-      have : dummy_candidate k ∈
-          (extend_instance k inst).voters.biUnion (extend_instance k inst).approves :=
-        Finset.mem_biUnion.2 ⟨dummy_voter k, hv', hmem⟩
-      simpa [ABCInstance.approvedCandidates] using this
-  have hcard_le :
-      inst.approvedCandidates.card + 1 ≤ (extend_instance k inst).approvedCandidates.card := by
-    -- use subset + card computation on `map ∪ {dummy}`
-    have hcard_map : (inst.approvedCandidates.map emb).card = inst.approvedCandidates.card := by
-      simpa using (Finset.card_map (s := inst.approvedCandidates) emb)
-    have hdummy : dummy_candidate k ∉ inst.approvedCandidates.map emb := by
-      intro hx
-      rcases Finset.mem_map.1 hx with ⟨c, _, hEq⟩
-      exact dummy_not_embedded k c (by simpa [emb] using hEq)
-    have hdisj : Disjoint (inst.approvedCandidates.map emb) {dummy_candidate k} :=
-      Finset.disjoint_singleton_right.2 hdummy
-    have hcard_union :
-        (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card =
-          (inst.approvedCandidates.map emb).card + 1 := by
-      simpa [Finset.card_singleton] using Finset.card_union_of_disjoint hdisj
-    have hcard_subset :
-        (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card ≤
-          (extend_instance k inst).approvedCandidates.card :=
-      Finset.card_le_card hsubset
-    -- combine
-    have hcard_eq :
-        inst.approvedCandidates.card + 1 =
-          (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card := by
-      calc
-        inst.approvedCandidates.card + 1
-            = (inst.approvedCandidates.map emb).card + 1 := by simpa [hcard_map]
-        _ = (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card := by
-            simpa using hcard_union.symm
-    have : inst.approvedCandidates.card + 1 ≤ (inst.approvedCandidates.map emb ∪ {dummy_candidate k}).card := by
-      simpa [hcard_eq] using (Nat.le_refl (inst.approvedCandidates.card + 1))
-    exact le_trans this hcard_subset
-  -- conclude `k+1 ≤ ...` from `k ≤ ...` for the original instance
-  have : k + 1 ≤ (extend_instance k inst).approvedCandidates.card := by
-    have : k ≤ inst.approvedCandidates.card := hpl
-    exact le_trans (Nat.add_le_add_right this 1) hcard_le
-  simpa [ABCInstance.plentiful] using this
-
 -- ============================================================================
 -- INDUCED RULE
 -- ============================================================================
@@ -466,8 +560,8 @@ The induced rule:
 noncomputable def induced_rule (k : ℕ)
     (f : ABCRule (Fin (k + 1)) (Fin (k + 2)) (k + 1))
     (hres : f.IsResolute)
-    (hprop : f.SatisfiesProportionality)
-    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
+  (_hprop : f.SatisfiesProportionality)
+  (_hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     ABCRule (Fin k) (Fin (k + 1)) k := by
   classical
   let g : ResoluteABCRule (Fin k) (Fin (k + 1)) k :=
@@ -495,8 +589,64 @@ noncomputable def induced_rule (k : ℕ)
       · have hvd : v = dummy_voter k := by simpa using hvv
         subst hvd
         have hlt : ¬(dummy_voter k).val < k := by simp [dummy_voter]
-        simp [extend_instance, dummy_voter, hlt]
+        simp [extend_instance, dummy_voter]
   simp [g, hcomm]
+
+lemma induced_rule_wellFormed (k : ℕ)
+    (f : ABCRule (Fin (k + 1)) (Fin (k + 2)) (k + 1))
+    (hres : f.IsResolute)
+    (hwf : IsWellFormedOnPlentiful f)
+    (hprop : f.SatisfiesProportionality)
+    (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
+    IsWellFormedOnPlentiful (induced_rule k f hres hprop hsp) := by
+  classical
+  intro inst hpl
+  let extInst := extend_instance k inst
+  have hpl_ext : extInst.plentiful := plentiful_extend_instance (k := k) inst hpl
+  have hW_ext_mem := f.resolute_committee_mem extInst hres
+  have hW_ext_card : (f.resolute_committee extInst hres).card = k + 1 := by
+    have h := (hwf extInst hpl_ext).2 _ hW_ext_mem
+    simpa using h.1
+  have hW_ext_sub : f.resolute_committee extInst hres ⊆ extInst.candidates :=
+    (hwf extInst hpl_ext).2 _ hW_ext_mem |>.2
+  have hdummy_in : dummy_candidate k ∈ f.resolute_committee extInst hres :=
+    dummy_in_resolute_extend (k := k) f hwf hres hprop hsp inst hpl
+
+  let W := project_committee k (f.resolute_committee extInst hres)
+  have hW_mem : W ∈ induced_rule k f hres hprop hsp inst := by
+    simp [induced_rule, ResoluteABCRule.toABCRule, W, extInst]
+
+  refine ⟨?_, ?_⟩
+  · exact ⟨W, hW_mem⟩
+  · intro W' hW'
+    have hW_eq : W' = W := by
+      simpa [induced_rule, ResoluteABCRule.toABCRule, W] using hW'
+    subst hW_eq
+    have hcard_erase : ((f.resolute_committee extInst hres).erase (dummy_candidate k)).card = k := by
+      have := Finset.card_erase_add_one hdummy_in
+      linarith [hW_ext_card]
+    have hmap_eq : (W.map ⟨embed_candidate k, embed_candidate_injective k⟩) =
+        (f.resolute_committee extInst hres).erase (dummy_candidate k) :=
+      map_project_committee_eq_erase_dummy (k := k) (W := f.resolute_committee extInst hres)
+    have hcard_W : W.card = k := by
+      have hmap_card : (W.map ⟨embed_candidate k, embed_candidate_injective k⟩).card = W.card := by
+        simp
+      have hmap_card' : (W.map ⟨embed_candidate k, embed_candidate_injective k⟩).card = k := by
+        simpa [hmap_eq] using hcard_erase
+      linarith
+    have hsub_W : W ⊆ inst.candidates := by
+      intro c hc
+      have hc_map : embed_candidate k c ∈ f.resolute_committee extInst hres :=
+        (mem_project_committee_iff (k := k)
+          (W := f.resolute_committee extInst hres) (c := c)).1 hc
+      have hc_in_cands : embed_candidate k c ∈ extInst.candidates := hW_ext_sub hc_map
+      rcases Finset.mem_union.1 hc_in_cands with hmap | hdummy
+      · rcases Finset.mem_map.1 hmap with ⟨c0, hc0, hEq⟩
+        have h_eq_c : c0 = c := embed_candidate_injective _ (by simpa using hEq)
+        subst h_eq_c
+        exact hc0
+      · cases (dummy_not_embedded k c) (by simpa using hdummy)
+    exact ⟨hcard_W, hsub_W⟩
 
 -- ============================================================================
 -- MAIN INDUCTION LEMMA
@@ -507,21 +657,24 @@ Lemma 7 (Peters): If there exists a rule satisfying the axioms for
 committee size k+1 (with k+1 voters and k+2 candidates), then there exists
 such a rule for committee size k (with k voters and k+1 candidates).
 -/
-theorem induction_k (k : ℕ) (hk : 2 ≤ k)
+theorem induction_k (k : ℕ) (_hk : 2 ≤ k)
     (f : ABCRule (Fin (k + 1)) (Fin (k + 2)) (k + 1))
-    (hwf : f.IsWellFormed)
+    (hwf : IsWellFormedOnPlentiful f)
     (hres : f.IsResolute)
     (heff : f.SatisfiesWeakEfficiency)
     (hprop : f.SatisfiesProportionality)
     (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     ∃ (f' : ABCRule (Fin k) (Fin (k + 1)) k),
+      IsWellFormedOnPlentiful f' ∧
       f'.IsResolute ∧
       f'.SatisfiesWeakEfficiency ∧
       f'.SatisfiesProportionality ∧
       Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f' := by
   classical
   let f' : ABCRule (Fin k) (Fin (k + 1)) k := induced_rule k f hres hprop hsp
-  refine ⟨f', ?_, ?_, ?_, ?_⟩
+  have f'wf : IsWellFormedOnPlentiful f' :=
+    induced_rule_wellFormed (k := k) (f := f) hres hwf hprop hsp
+  refine ⟨f', f'wf, ?_, ?_, ?_, ?_⟩
   · -- resolute
     intro inst
     simp [f', induced_rule, ResoluteABCRule.toABCRule]
@@ -619,7 +772,7 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
         have happD :
             (extend_instance k inst).approves (dummy_voter k) = {dummy_candidate k} := by
           have hltD : ¬(dummy_voter k).val < k := by simp [dummy_voter]
-          simp [extend_instance, dummy_voter, hltD]
+          simp [extend_instance, dummy_voter]
         have hdummy : dummy_candidate k ∉ (inst.approves a1).map embC := by
           intro hx
           rcases Finset.mem_map.1 hx with ⟨c0, _, hEq⟩
@@ -641,7 +794,7 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
         have happD :
             (extend_instance k inst).approves (dummy_voter k) = {dummy_candidate k} := by
           have hltD : ¬(dummy_voter k).val < k := by simp [dummy_voter]
-          simp [extend_instance, dummy_voter, hltD]
+          simp [extend_instance, dummy_voter]
         have hdummy : dummy_candidate k ∉ (inst.approves a2).map embC := by
           intro hx
           rcases Finset.mem_map.1 hx with ⟨c0, _, hEq⟩
@@ -656,7 +809,7 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
         have happD :
             (extend_instance k inst).approves (dummy_voter k) = {dummy_candidate k} := by
           have hltD : ¬(dummy_voter k).val < k := by simp [dummy_voter]
-          simp [extend_instance, dummy_voter, hltD]
+          simp [extend_instance, dummy_voter]
         simpa [happD]
     -- candidate lifts to extended candidates
     have hcand_ext :
@@ -746,7 +899,7 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
               have hlt : ¬(dummy_voter k).val < k := by simp [dummy_voter]
               have happD :
                   (extend_instance k inst).approves (dummy_voter k) = {dummy_candidate k} := by
-                simp [extend_instance, dummy_voter, hlt]
+                simp [extend_instance, dummy_voter]
               intro hEq
               have hset : ({dummy_candidate k} : Finset (Fin (k + 2))) = {embed_candidate k cand} := by
                 simpa [happD] using hEq
@@ -811,8 +964,7 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
     exact (mem_project_committee_iff (k := k)
       (W := f.resolute_committee (extend_instance k inst) hres) (c := cand)).2 hc_ext
   · -- strategyproofness on plentiful instances
-    intro inst inst' i hpl hpl' hi hvar hsub hres'
-    intro hgain
+    intro inst inst' i hpl hpl' hi hvar hsub hres' hgain
     -- lift to extended instances and contradict `hsp`
     let embV : Fin k ↪ Fin (k + 1) := ⟨embed_voter k, embed_voter_injective k⟩
     let embC : Fin (k + 1) ↪ Fin (k + 2) := ⟨embed_candidate k, embed_candidate_injective k⟩
@@ -841,7 +993,7 @@ theorem induction_k (k : ℕ) (hk : 2 ≤ k)
           have hvEq : (⟨(embed_voter k v0).val, hlt⟩ : Fin k) = v0 := by
             apply Fin.ext
             simp [embed_voter]
-          simp [extInst, extInst', extend_instance, hlt, ha0, embC, hvEq]
+          simp [extInst, extInst', extend_instance, hlt, ha0, hvEq]
         · have hvd : v = dummy_voter k := by simpa using hvv
           subst hvd
           simp [extInst, extInst', extend_instance, dummy_voter]

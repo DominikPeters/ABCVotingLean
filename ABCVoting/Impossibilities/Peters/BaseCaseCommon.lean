@@ -38,18 +38,19 @@ noncomputable def W (f : ABCRule V C k) (hres : f.IsResolute) (P : Profile)
     (h_proper : ∀ v : V, P v ⊂ allCandidates) : Finset C :=
   f.resolute_committee (mkInstance P h_proper) hres
 
-lemma W_card (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
-    (P : Profile) (h_proper : ∀ v : V, P v ⊂ allCandidates) :
+lemma W_card (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
+    (P : Profile) (h_proper : ∀ v : V, P v ⊂ allCandidates)
+    (hpl : (mkInstance P h_proper).plentiful) :
     (W f hres P h_proper).card = k := by
   have hmem := f.resolute_committee_mem (mkInstance P h_proper) hres
-  exact (hwf (mkInstance P h_proper)).2 _ hmem |>.1
+  exact (hwf (mkInstance P h_proper) hpl).2 _ hmem |>.1
 
 -- ============================================================================
 -- GENERIC STEPS (LEMMA H / LEMMA I)
 -- ============================================================================
 
 lemma stepH
-    (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+    (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (P_from P_to : Profile)
     (h_from : ∀ v : V, P_from v ⊂ allCandidates)
@@ -72,7 +73,7 @@ lemma stepH
   set W_from := W f hres P_from h_from
 
   have hW_to_card3 : W_to.card = 3 := by
-    simpa [W_to, k] using (W_card f hwf hres P_to h_to)
+    simpa [W_to, k] using (W_card f hwf hres P_to h_to hpl_to)
 
   have hW_from_inter : W_from ∩ A = A := by
     have h : insert z A ∩ A = A := by
@@ -189,7 +190,7 @@ lemma exclusive_singleton_of_unique_supporter (inst : ABCInstance V C k) (c : C)
       refine ⟨hv, ?_⟩
       simpa [hv_eq]
 
-lemma singleton_approver_in_W (f : ABCRule V C k) (hwf : f.IsWellFormed) (hres : f.IsResolute)
+lemma singleton_approver_in_W (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f)
     (P : Profile) (hP : ∀ v : V, P v ⊂ allCandidates)
     (hpl : (mkInstance P hP).plentiful)

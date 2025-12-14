@@ -2,7 +2,7 @@ import ABCVoting.ABCRule
 import ABCVoting.Axioms.Efficiency
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
-import ABCVoting.Impossibilities.Peters.StrategyproofnessPlentiful
+import ABCVoting.Impossibilities.Peters.RestrictToPlentiful
 
 open Finset BigOperators ABCInstance
 
@@ -158,13 +158,11 @@ lemma is_unapproved_embed_iff (m : ℕ) (inst : ABCInstance V (Fin m) k) (c : Fi
     (extend_candidates m inst).is_unapproved (embed_candidate m c) ↔ inst.is_unapproved c := by
   classical
   constructor
-  · intro hun v hv
-    intro hc
+  · intro hun v hv hc
     have : embed_candidate m c ∈ (extend_candidates m inst).approves v :=
       Finset.mem_map.2 ⟨c, hc, rfl⟩
     exact hun v hv this
-  · intro hun v hv
-    intro hc
+  · intro hun v hv hc
     rcases Finset.mem_map.1 hc with ⟨c', hc', hEq⟩
     have : c' = c := by
       apply embed_candidate_injective m
@@ -307,21 +305,95 @@ then there exists such a rule for m candidates (when m ≥ k).
 -/
 theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
     (f : ABCRule (Fin n) (Fin (m + 1)) k)
+    (hwf : IsWellFormedOnPlentiful f)
     (hres : f.IsResolute)
     (heff : f.SatisfiesWeakEfficiency)
     (hprop : f.SatisfiesProportionality)
     (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     ∃ (f' : ABCRule (Fin n) (Fin m) k),
+      IsWellFormedOnPlentiful f' ∧
       f'.IsResolute ∧
       f'.SatisfiesWeakEfficiency ∧
       f'.SatisfiesProportionality ∧
       Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f' := by
   classical
   let f' : ABCRule (Fin n) (Fin m) k := induced_rule (V := Fin n) (k := k) m f hres
-  refine ⟨f', ?_, ?_, ?_, ?_⟩
-  · -- resolute
+  have hres' : f'.IsResolute := by
     intro inst
     simp [f', induced_rule, ResoluteABCRule.toABCRule]
+  refine ⟨f', ?_⟩
+  constructor
+  · -- well-formed on plentiful instances
+    intro inst hpl
+    -- the unique committee of f' on inst
+    have hcomm :
+        f'.resolute_committee inst hres' =
+          project_committee m (f.resolute_committee (extend_candidates m inst) hres) := by
+      have hmem := f'.resolute_committee_mem inst hres'
+      simpa [f', induced_rule, ResoluteABCRule.toABCRule] using hmem
+    -- nonempty
+    have hnonempty : (f' inst).Nonempty := by
+      simpa [f', induced_rule, ResoluteABCRule.toABCRule] using
+          (Finset.singleton_nonempty (f'.resolute_committee inst hres'))
+    -- cardinality and subset
+    have hpl_ext : (extend_candidates m inst).plentiful :=
+      plentiful_extend_candidates (V := Fin n) (k := k) (m := m) inst hpl
+    have hW_ext_mem := f.resolute_committee_mem (extend_candidates m inst) hres
+    have hWF_ext := hwf (extend_candidates m inst) hpl_ext
+    have hcard_ext : (f.resolute_committee (extend_candidates m inst) hres).card = k := by
+      have hWF_ext' := (hWF_ext).2 _ hW_ext_mem
+      exact hWF_ext'.1
+    have hdummy :
+        dummy_candidate m ∉ f.resolute_committee (extend_candidates m inst) hres := by
+      refine ABCRule.unapproved_not_in_resolute (f := f) (hres := hres) (heff := heff)
+        (inst := extend_candidates m inst) (c := dummy_candidate m) hpl_ext
+        (dummy_unapproved (V := Fin n) (k := k) (m := m) inst)
+    let emb : Fin m ↪ Fin (m + 1) := ⟨embed_candidate m, embed_candidate_injective m⟩
+    have hmap :
+        (project_committee m (f.resolute_committee (extend_candidates m inst) hres)).map emb =
+          f.resolute_committee (extend_candidates m inst) hres :=
+      map_project_committee_eq_of_not_dummy (m := m)
+        (W := f.resolute_committee (extend_candidates m inst) hres) hdummy
+    have hcard_proj :
+        (project_committee m (f.resolute_committee (extend_candidates m inst) hres)).card = k := by
+      have hcard_map := Finset.card_map (s := project_committee m
+        (f.resolute_committee (extend_candidates m inst) hres)) emb
+      have hcard_map' :
+          (project_committee m (f.resolute_committee (extend_candidates m inst) hres)).card =
+            (f.resolute_committee (extend_candidates m inst) hres).card := by
+        simpa [hmap] using hcard_map.symm
+      simpa [hcard_ext] using hcard_map'
+    constructor
+    · exact hnonempty
+    · intro W hW
+      have hW' :
+          W = project_committee m (f.resolute_committee (extend_candidates m inst) hres) := by
+        simpa [f', induced_rule, ResoluteABCRule.toABCRule, hcomm] using hW
+      subst hW'
+      constructor
+      · simpa using hcard_proj
+      · intro c hc
+        have hc_ext : embed_candidate m c ∈
+            f.resolute_committee (extend_candidates m inst) hres :=
+          (mem_project_committee_iff (m := m)
+            (W := f.resolute_committee (extend_candidates m inst) hres) (c := c)).1 hc
+        have happ : (extend_candidates m inst).is_approved (embed_candidate m c) :=
+          ABCRule.resolute_weak_efficiency (f := f) (hres := hres) (heff := heff)
+            (inst := extend_candidates m inst) (c := embed_candidate m c) hpl_ext hc_ext
+        rcases happ with ⟨v, hv, hcv⟩
+        rcases Finset.mem_map.1 hcv with ⟨c', hc_mem, hEq⟩
+        have hc_candidates : c ∈ inst.approves v := by
+          have hc_eq : c' = c := by
+            apply embed_candidate_injective m
+            simpa using hEq
+          subst hc_eq
+          simpa using hc_mem
+        have hv' : v ∈ inst.voters := by simpa [extend_candidates] using hv
+        exact (inst.approves_subset v hv') hc_candidates
+  constructor
+  · -- resolute
+    exact hres'
+  constructor
   · -- weak efficiency (on plentiful instances)
     intro inst hpl W hW c hc
     -- Since `f' inst` is a singleton, reduce to the projected resolute committee.
@@ -345,6 +417,7 @@ theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
       (f.resolute_committee (extend_candidates m inst) hres)
       (f.resolute_committee_mem (extend_candidates m inst) hres)
       (embed_candidate m c) hc_ext) hunapp_ext
+  constructor
   · -- proportionality
     intro inst c hpl hcand hquota W hW
     have hW' :
@@ -374,19 +447,19 @@ theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
     exact (mem_project_committee_iff (m := m) (W := f.resolute_committee (extend_candidates m inst) hres)
       (c := c)).2 hc_ext
   · -- strategyproofness on plentiful instances
-    intro inst inst' i hpl hpl' hi hvar hsub hres'
+    intro inst inst' i hpl hpl' hi hvar hsub hres''
     -- Pick the embedding once.
     let emb : Fin m ↪ Fin (m + 1) := ⟨embed_candidate m, embed_candidate_injective m⟩
     -- Normalize both extracted committees to the explicit projected committees.
     have hcomm_inst :
-        f'.resolute_committee inst hres' =
+        f'.resolute_committee inst hres'' =
           project_committee m (f.resolute_committee (extend_candidates m inst) hres) := by
-      have hmem := f'.resolute_committee_mem inst hres'
+      have hmem := f'.resolute_committee_mem inst hres''
       simpa [f', induced_rule, ResoluteABCRule.toABCRule] using hmem
     have hcomm_inst' :
-        f'.resolute_committee inst' hres' =
+        f'.resolute_committee inst' hres'' =
           project_committee m (f.resolute_committee (extend_candidates m inst') hres) := by
-      have hmem := f'.resolute_committee_mem inst' hres'
+      have hmem := f'.resolute_committee_mem inst' hres''
       simpa [f', induced_rule, ResoluteABCRule.toABCRule] using hmem
     -- Assume a successful manipulation for f' and derive one for f.
     intro hgain

@@ -58,14 +58,14 @@ lemma W_P₁_eq_W_P₁' (f : ABCRule V C k) (hres : f.IsResolute) :
   simpa [W] using this
 
 theorem base_case_impossible
-    (f : ABCRule V C k) (hwf : f.IsWellFormedOnPlentiful) (hres : f.IsResolute)
+    (f : ABCRule V C k) (hwf : IsWellFormedOnPlentiful f) (hres : f.IsResolute)
     (hprop : f.SatisfiesProportionality) (hsp : Peters.SatisfiesResoluteStrategyproofnessOnPlentiful f) :
     False := by
   have hc : (2 : C) ∈ W f hres P₁ P₁_proper := c_in_W_P₁ f hres hprop
   have hd : (3 : C) ∈ W f hres P₁ P₁_proper := d_in_W_P₁ f hres hprop
 
   have hcard3 : (W f hres P₁ P₁_proper).card = 3 := by
-    simpa [k] using (W_card f hwf hres P₁ P₁_proper)
+    simpa [k] using (W_card f hwf hres P₁ P₁_proper P₁_plentiful)
 
   set W₁ := W f hres P₁ P₁_proper
 
