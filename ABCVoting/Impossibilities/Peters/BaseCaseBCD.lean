@@ -9,7 +9,7 @@ import ABCVoting.ABCRule
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
 import ABCVoting.Impossibilities.Peters.RestrictToPlentiful
-import ABCVoting.Fin4Card3
+import ABCVoting.Impossibilities.Peters.Fin4Card3
 import ABCVoting.Impossibilities.Peters.BaseCaseCommon
 
 open Finset ABCInstance

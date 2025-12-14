@@ -12,7 +12,6 @@
 
 import ABCVoting.Basic
 import ABCVoting.ABCRule
-import ABCVoting.Fin4Card3
 
 -- ============================================================================
 -- AXIOMS AND PROPERTIES

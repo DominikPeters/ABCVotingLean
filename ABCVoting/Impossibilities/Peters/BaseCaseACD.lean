@@ -5,7 +5,7 @@ This file proves the first step of the base case: assuming f(P₁) = acd,
 we show f(P₁_₅) = acd, and then f(P₂) = bcd.
 -/
 
-import ABCVoting.Fin4Card3
+import ABCVoting.Impossibilities.Peters.Fin4Card3
 import ABCVoting.Impossibilities.Peters.BaseCaseCommon
 import ABCVoting.Impossibilities.Peters.RestrictToPlentiful
 

@@ -1,7 +1,7 @@
 import ABCVoting.ABCRule
 import ABCVoting.Axioms.Proportionality
 import ABCVoting.Axioms.Strategyproofness
-import ABCVoting.Fin4Card3
+import ABCVoting.Impossibilities.Peters.Fin4Card3
 import ABCVoting.Impossibilities.Peters.BaseCaseACD
 import ABCVoting.Impossibilities.Peters.BaseCaseBCD
 import ABCVoting.Impossibilities.Peters.BaseCaseCommon
