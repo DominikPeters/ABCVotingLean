@@ -112,8 +112,7 @@ lemma expand_voters_is_party_list (k q : ℕ) (hq : 0 < q)
     have hmod : v₁.modNat = v₂.modNat := by
       simpa [finProdFinEquiv_symm_apply] using h
     simpa [expand_voters, finProdFinEquiv_symm_apply, hmod]
-  ·
-    have := hpl (finProdFinEquiv.symm v₁).2 hv₁' (finProdFinEquiv.symm v₂).2 hv₂'
+  · have := hpl (finProdFinEquiv.symm v₁).2 hv₁' (finProdFinEquiv.symm v₂).2 hv₂'
     simpa [expand_voters] using this
 
 lemma expand_voters_singleton_party (k q : ℕ) (hq : 0 < q)
@@ -329,8 +328,7 @@ noncomputable def chain_instance (k q : ℕ) (hq : 0 < q)
       have hs : inst'.approves i ⊆ inst'.candidates := inst'.approves_subset i hi'
       have hcand' : inst'.candidates = inst.candidates := by simpa using hvar.2.1.symm
       simpa [h, hcand'] using hs
-    ·
-      have hs : inst.approves p.2 ⊆ inst.candidates := inst.approves_subset _ hv_orig
+    · have hs : inst.approves p.2 ⊆ inst.candidates := inst.approves_subset _ hv_orig
       simpa [h] using hs
   voters_nonempty := (expand_voters k q hq inst).voters_nonempty
   k_pos := inst.k_pos
@@ -504,7 +502,7 @@ lemma chain_instance_plentiful_ge (k q : ℕ) (hq : 0 < q)
 -- Adjacent chain instances form an i-variant pair
 lemma chain_instance_step_variant (k q : ℕ) (hq : 0 < q)
     (inst inst' : ABCInstance (Fin k) (Cand k) k) (i : Fin k)
-    (hi : i ∈ inst.voters)
+    (_hi : i ∈ inst.voters)
     (hvar : inst.is_i_variant inst' i) (t : ℕ) (ht : t < q) :
     let chain_t := chain_instance k q hq inst inst' i hvar t
     let chain_t1 := chain_instance k q hq inst inst' i hvar (t + 1)
@@ -585,7 +583,7 @@ lemma chain_instance_voter_mem (k q : ℕ) (hq : 0 < q)
   exact Finset.mem_product.mpr ⟨Finset.mem_univ _, hi⟩
 
 theorem induction_n (k q : ℕ)
-    (hk : 3 ≤ k)
+    (_hk : 3 ≤ k)
     (hq : 1 ≤ q)
     (f : ABCRule (Fin (q * k)) (Cand k) k)
     (hwf : IsWellFormedOnPlentiful f)

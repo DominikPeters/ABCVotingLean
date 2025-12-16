@@ -186,7 +186,7 @@ lemma start_budget_eq (w : MESWitness V C inst) (i : V) (hi : i ∈ inst.voters)
         · split_ifs at h_eq with happ
           · simp only [Finset.mem_singleton] at h_eq
             rw [h_eq]
-            simp only [t']
+            dsimp only [t']
             exact ⟨by omega, happ⟩
           · simp only [Finset.notMem_empty] at h_eq
     rw [hfilt]

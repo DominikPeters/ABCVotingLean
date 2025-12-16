@@ -243,8 +243,7 @@ lemma delta_voter_of_prefers (inst : ABCInstance V C k) (W T : Finset C) (i : V)
       simpa [hTW_eq] using hc_bound
     have hk_cases : k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 := by omega
     rcases hk_cases with rfl | rfl | rfl | rfl | rfl | rfl
-    ·
-      have hT_eq : T.card = 1 := by omega
+    · have hT_eq : T.card = 1 := by omega
       have h_ineq2 : core_ineq_holds 2 1 (W ∩ T).card a b c :=
         core_ineq_k2_t1 (W ∩ T).card a b c
           (by simpa [hT_eq] using hWT_disj)
@@ -253,20 +252,15 @@ lemma delta_voter_of_prefers (inst : ABCInstance V C k) (W T : Finset C) (i : V)
           (by simpa [hT_eq] using hc')
           hca
       simpa [hT_eq] using h_ineq2
-    ·
-      exact core_ineq_k3 T.card (W ∩ T).card a b c
+    · exact core_ineq_k3 T.card (W ∩ T).card a b c
         hT_size (by omega) hWT_disj (by simpa using ha') (by simpa using hb') (by simpa using hc') hca
-    ·
-      exact core_ineq_k4 T.card (W ∩ T).card a b c
+    · exact core_ineq_k4 T.card (W ∩ T).card a b c
         hT_size (by omega) hWT_disj (by simpa using ha') (by simpa using hb') (by simpa using hc') hca
-    ·
-      exact core_ineq_k5 T.card (W ∩ T).card a b c
+    · exact core_ineq_k5 T.card (W ∩ T).card a b c
         hT_size (by omega) hWT_disj (by simpa using ha') (by simpa using hb') (by simpa using hc') hca
-    ·
-      exact core_ineq_k6 T.card (W ∩ T).card a b c
+    · exact core_ineq_k6 T.card (W ∩ T).card a b c
         hT_size (by omega) hWT_disj (by simpa using ha') (by simpa using hb') (by simpa using hc') hca
-    ·
-      exact core_ineq_k7 T.card (W ∩ T).card a b c
+    · exact core_ineq_k7 T.card (W ∩ T).card a b c
         hT_size (by omega) hWT_disj (by simpa using ha') (by simpa using hb') (by simpa using hc') hca
   simpa [core_ineq_holds] using h_ineq
 

@@ -17,7 +17,7 @@ The sum of score gains over T can be rewritten as a sum over voters.
 lemma sum_score_gains_eq (inst : ABCInstance V C k) (W T : Finset C)
     (hT_disj : Disjoint W T) :
     ∑ c ∈ T, (inst.pav_score (W ∪ {c}) - inst.pav_score W) =
-    ∑ i ∈ inst.voters, ∑ c ∈ T ∩ inst.approves i, 1 / ((W ∩ inst.approves i).card + 1 : ℚ) := by
+    ∑ i ∈ inst.voters, ∑ _ ∈ T ∩ inst.approves i, 1 / ((W ∩ inst.approves i).card + 1 : ℚ) := by
   trans (∑ c ∈ T, ∑ i ∈ inst.voters.filter (fun i => c ∈ inst.approves i),
       1 / ((W ∩ inst.approves i).card + 1 : ℚ))
   · apply Finset.sum_congr rfl
@@ -122,15 +122,19 @@ lemma exists_high_score_gain (inst : ABCInstance V C k) (W T : Finset C)
   have hT_card_pos : 0 < T.card := card_pos.mpr hT_nonempty
   by_contra h_none
   push_neg at h_none
-  have h_all_small : ∀ c ∈ T, inst.pav_score (W ∪ {c}) - inst.pav_score W < (inst.voters.card : ℚ) / k := by
+  have h_all_small : ∀ c ∈ T, inst.pav_score (W ∪ {c}) - inst.pav_score W <
+      (inst.voters.card : ℚ) / k := by
     intro c hc
     have hc_not_W : c ∉ W := fun h => absurd hc ((disjoint_left.mp hT_disj) h)
     exact h_none c hc hc_not_W
-  have h_sum_small : ∑ c ∈ T, (inst.pav_score (W ∪ {c}) - inst.pav_score W) < T.card * ((inst.voters.card : ℚ) / k) := by
+  have h_sum_small : ∑ c ∈ T, (inst.pav_score (W ∪ {c}) - inst.pav_score W) <
+      T.card * ((inst.voters.card : ℚ) / k) := by
     calc ∑ c ∈ T, (inst.pav_score (W ∪ {c}) - inst.pav_score W)
-        < ∑ _ ∈ T, (inst.voters.card : ℚ) / k := Finset.sum_lt_sum_of_nonempty hT_nonempty h_all_small
+        < ∑ _ ∈ T, (inst.voters.card : ℚ) / k :=
+          Finset.sum_lt_sum_of_nonempty hT_nonempty h_all_small
       _ = T.card * ((inst.voters.card : ℚ) / k) := by simp [Finset.sum_const, nsmul_eq_mul]
-  have h_avg_small : (∑ c ∈ T, (inst.pav_score (W ∪ {c}) - inst.pav_score W)) / T.card < (inst.voters.card : ℚ) / k := by
+  have h_avg_small : (∑ c ∈ T, (inst.pav_score (W ∪ {c}) - inst.pav_score W)) / T.card <
+      (inst.voters.card : ℚ) / k := by
     have hT_pos : (0 : ℚ) < T.card := Nat.cast_pos.mpr hT_card_pos
     calc (∑ c ∈ T, (inst.pav_score (W ∪ {c}) - inst.pav_score W)) / T.card
         < (T.card * ((inst.voters.card : ℚ) / k)) / T.card := by
@@ -236,7 +240,8 @@ theorem pav_winner_in_disjoint_core (inst : ABCInstance V C k) (W : Finset C)
     calc inst.pav_score W
         = inst.pav_score W' - (inst.pav_score W' - inst.pav_score W) := by ring
       _ ≤ inst.pav_score W' - (inst.voters.card : ℚ) / k := by
-          have : inst.pav_score W' - inst.pav_score W = inst.pav_score (W ∪ {c}) - inst.pav_score W := rfl
+          have : inst.pav_score W' - inst.pav_score W =
+              inst.pav_score (W ∪ {c}) - inst.pav_score W := rfl
           linarith
       _ < inst.pav_score W' - ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
             1 / ((W' ∩ inst.approves i).card : ℚ) := by linarith

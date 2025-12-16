@@ -14,12 +14,12 @@ lemma fin4_card3_mem_zero (s : Finset (Fin 4)) (hs : s.card = 3) (h0 : (0 : Fin 
   rcases Finset.card_eq_one.mp hcompl with ⟨m, hm⟩
   have hm0 : m ≠ (0 : Fin 4) := by
     intro h
-    have : (0 : Fin 4) ∈ sᶜ := by simpa [hm, h]
+    have : (0 : Fin 4) ∈ sᶜ := by simp [hm, h]
     exact (Finset.mem_compl.mp this) h0
   have hs' : s = Finset.univ.erase m := by
     calc
       s = (sᶜ)ᶜ := by simpa using (Finset.compl_compl (s := s)).symm
-      _ = ({m} : Finset (Fin 4))ᶜ := by simpa [hm]
+      _ = ({m} : Finset (Fin 4))ᶜ := by simp [hm]
       _ = Finset.univ.erase m := by
         ext x
         simp
@@ -48,12 +48,12 @@ lemma fin4_card3_mem_one (s : Finset (Fin 4)) (hs : s.card = 3) (h1 : (1 : Fin 4
   rcases Finset.card_eq_one.mp hcompl with ⟨m, hm⟩
   have hm1 : m ≠ (1 : Fin 4) := by
     intro h
-    have : (1 : Fin 4) ∈ sᶜ := by simpa [hm, h]
+    have : (1 : Fin 4) ∈ sᶜ := by simp [hm, h]
     exact (Finset.mem_compl.mp this) h1
   have hs' : s = Finset.univ.erase m := by
     calc
       s = (sᶜ)ᶜ := by simpa using (Finset.compl_compl (s := s)).symm
-      _ = ({m} : Finset (Fin 4))ᶜ := by simpa [hm]
+      _ = ({m} : Finset (Fin 4))ᶜ := by simp [hm]
       _ = Finset.univ.erase m := by
         ext x
         simp
@@ -82,12 +82,12 @@ lemma fin4_card3_mem_two (s : Finset (Fin 4)) (hs : s.card = 3) (h2 : (2 : Fin 4
   rcases Finset.card_eq_one.mp hcompl with ⟨m, hm⟩
   have hm2 : m ≠ (2 : Fin 4) := by
     intro h
-    have : (2 : Fin 4) ∈ sᶜ := by simpa [hm, h]
+    have : (2 : Fin 4) ∈ sᶜ := by simp [hm, h]
     exact (Finset.mem_compl.mp this) h2
   have hs' : s = Finset.univ.erase m := by
     calc
       s = (sᶜ)ᶜ := by simpa using (Finset.compl_compl (s := s)).symm
-      _ = ({m} : Finset (Fin 4))ᶜ := by simpa [hm]
+      _ = ({m} : Finset (Fin 4))ᶜ := by simp [hm]
       _ = Finset.univ.erase m := by
         ext x
         simp
@@ -116,12 +116,12 @@ lemma fin4_card3_mem_three (s : Finset (Fin 4)) (hs : s.card = 3) (h3 : (3 : Fin
   rcases Finset.card_eq_one.mp hcompl with ⟨m, hm⟩
   have hm3 : m ≠ (3 : Fin 4) := by
     intro h
-    have : (3 : Fin 4) ∈ sᶜ := by simpa [hm, h]
+    have : (3 : Fin 4) ∈ sᶜ := by simp [hm, h]
     exact (Finset.mem_compl.mp this) h3
   have hs' : s = Finset.univ.erase m := by
     calc
       s = (sᶜ)ᶜ := by simpa using (Finset.compl_compl (s := s)).symm
-      _ = ({m} : Finset (Fin 4))ᶜ := by simpa [hm]
+      _ = ({m} : Finset (Fin 4))ᶜ := by simp [hm]
       _ = Finset.univ.erase m := by
         ext x
         simp

@@ -93,8 +93,7 @@ theorem base_case_impossible
       simpa [W₁, Peters.BaseCaseACD.comm_abd, hW_eq_abd] using hc
     cases (by decide : ¬(2 : C) ∈ ({0, 1, 3} : Finset (Fin 4))) this
   rcases hW_cases' with hW_eq_acd | hW_eq_bcd
-  ·
-    refine Peters.BaseCaseACD.contradiction_from_P₁_eq_acd f hwf hres hprop hsp ?_
+  · refine Peters.BaseCaseACD.contradiction_from_P₁_eq_acd f hwf hres hprop hsp ?_
     simpa [W₁] using hW_eq_acd
   · -- transfer the equality to the `BaseCaseBCD` version of `P₁`
     have hW_eq_bcd_ACD :

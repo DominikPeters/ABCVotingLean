@@ -199,8 +199,10 @@ lemma plentiful_extend_candidates (m : ℕ) (inst : ABCInstance V (Fin m) k) :
     simpa [hcard_map] using hmap_le
   exact le_trans hpl hinst_le
 
-lemma singleton_party_size_extend_candidates (m : ℕ) (inst : ABCInstance V (Fin m) k) (c : Fin m) :
-    (extend_candidates m inst).singleton_party_size (embed_candidate m c) = inst.singleton_party_size c := by
+lemma singleton_party_size_extend_candidates (m : ℕ) (inst : ABCInstance V (Fin m) k)
+    (c : Fin m) :
+    (extend_candidates m inst).singleton_party_size (embed_candidate m c) =
+      inst.singleton_party_size c := by
   classical
   let emb : Fin m ↪ Fin (m + 1) := ⟨embed_candidate m, embed_candidate_injective m⟩
   have hfilter :
@@ -303,7 +305,7 @@ noncomputable def induced_rule (m : ℕ) {k : ℕ} (f : ABCRule V (Fin (m + 1)) 
 Lemma 6 (Peters): If there exists a rule satisfying the axioms for m+1 candidates,
 then there exists such a rule for m candidates (when m ≥ k).
 -/
-theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
+theorem induction_m (n m k : ℕ) (_hk : 3 ≤ k) (_hm : k ≤ m)
     (f : ABCRule (Fin n) (Fin (m + 1)) k)
     (hwf : IsWellFormedOnPlentiful f)
     (hres : f.IsResolute)
@@ -405,9 +407,10 @@ theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
       plentiful_extend_candidates (V := Fin n) (k := k) (m := m) inst hpl
     have hc_ext :
         embed_candidate m c ∈ f.resolute_committee (extend_candidates m inst) hres := by
-      exact (mem_project_committee_iff (m := m) (W := f.resolute_committee (extend_candidates m inst) hres)
-        (c := c)).1 hc
-    -- If c were unapproved in the original instance, its embedding would be unapproved after extension.
+      exact (mem_project_committee_iff (m := m)
+          (W := f.resolute_committee (extend_candidates m inst) hres) (c := c)).1 hc
+    -- If c were unapproved in the original instance, its embedding would be
+    -- unapproved after extension.
     intro hunapp
     have hunapp_ext :
         (extend_candidates m inst).is_unapproved (embed_candidate m c) :=
@@ -442,10 +445,11 @@ theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
     have hc_ext :
         embed_candidate m c ∈ f.resolute_committee (extend_candidates m inst) hres :=
       ABCRule.resolute_proportionality (f := f) (hres := hres) (hprop := hprop)
-        (inst := extend_candidates m inst) (c := embed_candidate m c)
+        (inst := extend_candidates m inst)
+        (c := embed_candidate m c)
         hpl_ext hcand_ext hquota_ext
-    exact (mem_project_committee_iff (m := m) (W := f.resolute_committee (extend_candidates m inst) hres)
-      (c := c)).2 hc_ext
+    exact (mem_project_committee_iff (m := m)
+        (W := f.resolute_committee (extend_candidates m inst) hres) (c := c)).2 hc_ext
   · -- strategyproofness on plentiful instances
     intro inst inst' i hpl hpl' hi hvar hsub hres''
     -- Pick the embedding once.
@@ -464,8 +468,10 @@ theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
     -- Assume a successful manipulation for f' and derive one for f.
     intro hgain
     have hgain_ss :
-        (project_committee m (f.resolute_committee (extend_candidates m inst) hres) ∩ inst.approves i) ⊂
-          (project_committee m (f.resolute_committee (extend_candidates m inst') hres) ∩ inst.approves i) := by
+        (project_committee m (f.resolute_committee (extend_candidates m inst) hres) ∩
+          inst.approves i) ⊂
+        (project_committee m (f.resolute_committee (extend_candidates m inst') hres) ∩
+          inst.approves i) := by
       -- `⊃` is strict superset, i.e. reverse strict subset.
       simpa [hcomm_inst, hcomm_inst'] using hgain
     -- Extend plentifulness and exclude the dummy by weak efficiency.
@@ -481,16 +487,21 @@ theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
     have hdummy' :
         dummy_candidate m ∉ f.resolute_committee (extend_candidates m inst') hres := by
       refine ABCRule.unapproved_not_in_resolute (f := f) (hres := hres) (heff := heff)
-        (inst := extend_candidates m inst') (c := dummy_candidate m) hpl'_ext
+        (inst := extend_candidates m inst')
+        (c := dummy_candidate m) hpl'_ext
         (dummy_unapproved (V := Fin n) (k := k) (m := m) inst')
     -- Map the strict improvement through the embedding.
     have hgain_map :
-        ((project_committee m (f.resolute_committee (extend_candidates m inst) hres) ∩ inst.approves i).map emb) ⊂
-          ((project_committee m (f.resolute_committee (extend_candidates m inst') hres) ∩ inst.approves i).map emb) :=
+        ((project_committee m (f.resolute_committee (extend_candidates m inst) hres) ∩
+            inst.approves i).map emb) ⊂
+          ((project_committee m (f.resolute_committee (extend_candidates m inst') hres) ∩
+            inst.approves i).map emb) :=
       (Finset.map_ssubset_map (f := emb)).2 hgain_ss
     have hgain_map' :
-        (f.resolute_committee (extend_candidates m inst) hres ∩ (inst.approves i).map emb) ⊂
-          (f.resolute_committee (extend_candidates m inst') hres ∩ (inst.approves i).map emb) := by
+        (f.resolute_committee (extend_candidates m inst) hres ∩
+            (inst.approves i).map emb) ⊂
+          (f.resolute_committee (extend_candidates m inst') hres ∩
+            (inst.approves i).map emb) := by
       -- rewrite by `map_inter` and by `map_project_committee_eq_of_not_dummy`
       simpa [Finset.map_inter, emb,
         map_project_committee_eq_of_not_dummy (m := m)
@@ -498,8 +509,10 @@ theorem induction_m (n m k : ℕ) (hk : 3 ≤ k) (hm : k ≤ m)
         map_project_committee_eq_of_not_dummy (m := m)
           (W := f.resolute_committee (extend_candidates m inst') hres) hdummy'] using hgain_map
     have hgain_f :
-        (f.resolute_committee (extend_candidates m inst') hres ∩ (extend_candidates m inst).approves i) ⊃
-          (f.resolute_committee (extend_candidates m inst) hres ∩ (extend_candidates m inst).approves i) := by
+        (f.resolute_committee (extend_candidates m inst') hres ∩
+            (extend_candidates m inst).approves i) ⊃
+          (f.resolute_committee (extend_candidates m inst) hres ∩
+            (extend_candidates m inst).approves i) := by
       -- `approves` is mapped by the embedding in the extended instance.
       simpa [extend_candidates, emb] using hgain_map'
     -- Show that the manipulation data lifts to the extended instances.

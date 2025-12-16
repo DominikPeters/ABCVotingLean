@@ -41,7 +41,8 @@ A single round of MES (Method of Equal Shares) execution.
 
 Each round tracks:
 - **Budgets**: The budget each voter has at the start and end of this round
-- **ρ-values**: For each candidate, the cost-share ratio needed for affordability (⊤ if unaffordable)
+- **ρ-values**: For each candidate, the cost-share ratio for affordability
+  (⊤ if unaffordable)
 - **already_selected**: The set of candidates selected in previous rounds
 - **selected**: The candidate selected in this round (the one with minimal ρ)
 - **Properties**: Various constraints ensuring the round is valid and consistent

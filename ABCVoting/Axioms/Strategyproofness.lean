@@ -48,10 +48,10 @@ Construct an instance where voter i's approval is changed to A'.
 This requires A' to be a valid ballot (nonempty, proper subset of candidates).
 -/
 def modify_approval (inst : ABCInstance V C k) (i : V) (A' : Finset C)
-    (hi : i ∈ inst.voters)
+    (_hi : i ∈ inst.voters)
     (hA'_sub : A' ⊆ inst.candidates)
-    (hA'_nonempty : A'.Nonempty)
-    (hA'_proper : A' ⊂ inst.candidates) :
+    (_hA'_nonempty : A'.Nonempty)
+    (_hA'_proper : A' ⊂ inst.candidates) :
     ABCInstance V C k where
   voters := inst.voters
   candidates := inst.candidates
@@ -92,7 +92,8 @@ lemma modify_approval_other (inst : ABCInstance V C k) (i : V) (A' : Finset C)
     (hi : i ∈ inst.voters) (hA'_sub : A' ⊆ inst.candidates)
     (hA'_nonempty : A'.Nonempty) (hA'_proper : A' ⊂ inst.candidates)
     (v : V) (hne : v ≠ i) :
-    (inst.modify_approval i A' hi hA'_sub hA'_nonempty hA'_proper).approves v = inst.approves v := by
+    (inst.modify_approval i A' hi hA'_sub hA'_nonempty hA'_proper).approves v =
+      inst.approves v := by
   simp [modify_approval, hne]
 
 -- ============================================================================
