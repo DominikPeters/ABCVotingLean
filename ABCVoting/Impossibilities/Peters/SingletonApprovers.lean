@@ -133,34 +133,6 @@ lemma to_party_list_singleton_party_size (inst : ABCInstance V C k) (c : C)
     · exact hv
     · simp [heq]
 
-/--
-c is a candidate in the transformed profile.
--/
-lemma to_party_list_c_in_candidates (inst : ABCInstance V C k) (c : C)
-    (hc : c ∈ inst.candidates)
-    (hm : inst.candidates.card ≥ 2)
-    (hexcl : is_exclusive_singleton inst c) :
-    c ∈ (to_party_list inst c hc hm hexcl).candidates := by
-  simp [to_party_list, hc]
-
-/--
-The transformed profile has the same voters.
--/
-lemma to_party_list_voters (inst : ABCInstance V C k) (c : C)
-    (hc : c ∈ inst.candidates)
-    (hm : inst.candidates.card ≥ 2)
-    (hexcl : is_exclusive_singleton inst c) :
-    (to_party_list inst c hc hm hexcl).voters = inst.voters := rfl
-
-/--
-The transformed profile has the same number of voters.
--/
-lemma to_party_list_voters_card (inst : ABCInstance V C k) (c : C)
-    (hc : c ∈ inst.candidates)
-    (hm : inst.candidates.card ≥ 2)
-    (hexcl : is_exclusive_singleton inst c) :
-    (to_party_list inst c hc hm hexcl).voters.card = inst.voters.card := rfl
-
 -- ============================================================================
 -- STRATEGYPROOFNESS CHAIN
 -- ============================================================================
@@ -190,25 +162,6 @@ The non-{c} voters: voters whose ballot is not exactly {c}.
 def non_singleton_voters (inst : ABCInstance V C k) (c : C) : Finset V :=
   inst.voters.filter (fun v => inst.approves v ≠ {c})
 
-/--
-Non-singleton voters are a subset of all voters.
--/
-lemma non_singleton_voters_subset (inst : ABCInstance V C k) (c : C) :
-    non_singleton_voters inst c ⊆ inst.voters :=
-  Finset.filter_subset _ _
-
-/--
-A voter is either in the singleton party or in non-singleton voters.
--/
-lemma voter_singleton_or_non (inst : ABCInstance V C k) (c : C) (v : V) (hv : v ∈ inst.voters) :
-    v ∈ inst.singleton_party c ∨ v ∈ non_singleton_voters inst c := by
-  by_cases h : inst.approves v = {c}
-  · left
-    simp only [singleton_party, mem_filter]
-    exact ⟨hv, h⟩
-  · right
-    simp only [non_singleton_voters, mem_filter]
-    exact ⟨hv, h⟩
 
 -- ============================================================================
 -- PROFILE SEQUENCE FOR INDUCTION
@@ -393,18 +346,6 @@ lemma sp_preserves_committee_ne_strict_on_plentiful (f : ABCRule V C k)
   have hno := hsp inst inst' i hpl hpl' hi hvar hsub hres
   exact hno hgain
 
-/--
-For a non-{c} voter i, their original ballot is a strict subset of C \ {c}
-(assuming nonempty original ballot and C \ {c} ≠ original ballot).
--/
-lemma original_strict_subset_complement (inst : ABCInstance V C k) (c : C)
-    (hexcl : is_exclusive_singleton inst c) (v : V) (hv : v ∈ inst.voters)
-    (hne : inst.approves v ≠ {c})
-    (hne2 : inst.approves v ≠ inst.candidates \ {c}) :
-    inst.approves v ⊂ inst.candidates \ {c} := by
-  rw [Finset.ssubset_iff_subset_ne]
-  exact ⟨original_ballot_subset_complement inst c hexcl v hv hne, hne2⟩
-
 -- ============================================================================
 -- KEY LEMMA: REMOVING ONE VOTER FROM S PRESERVES c IN COMMITTEE
 -- ============================================================================
@@ -450,55 +391,30 @@ lemma c_in_committee_induction_step
 
   have hpl_S : P_S.plentiful :=
     profile_with_switched_plentiful inst c hc hm hm_ge_2 S hS_sub hpl
-  have hS_sub_erase : S.erase i ⊆ inst.voters := by
-    intro v hv
-    exact hS_sub (Finset.mem_of_mem_erase hv)
+  have hS_sub_erase : S.erase i ⊆ inst.voters := (Finset.erase_subset i S).trans hS_sub
   have hpl_Si : P_Si.plentiful :=
     profile_with_switched_plentiful inst c hc hm hm_ge_2 (S.erase i) hS_sub_erase hpl
 
   -- In P_S, voter i reports C \ {c}
   have hi_ballot_S : P_S.approves i = inst.candidates \ {c} := by
-    change (profile_with_switched inst c hc hm_ge_2 S).approves i = inst.candidates \ {c}
-    simp only [profile_with_switched, hi_in_S, ite_true]
+    simp only [P_S, profile_with_switched, hi_in_S, ite_true]
 
   -- In P_{S\i}, voter i reports their original ballot
-  have hi_not_in_erase : i ∉ S.erase i := Finset.notMem_erase i S
   have hi_ballot_Si : P_Si.approves i = inst.approves i := by
-    change (profile_with_switched inst c hc hm_ge_2 (S.erase i)).approves i = inst.approves i
-    simp only [profile_with_switched, hi_not_in_erase, ite_false]
+    simp only [P_Si, profile_with_switched, Finset.notMem_erase, ite_false]
 
   -- Case split: is voter i's original ballot equal to C \ {c} or not?
   by_cases hi_ballot_eq : inst.approves i = inst.candidates \ {c}
-  · -- Case 1: voter i already has ballot C \ {c}
-    -- Then P_S and P_{S\i} have the same ballot for voter i
-    -- But actually this means the profiles differ only on other voters
-    -- We need to use a different argument here
-    have h_same_ballot : P_S.approves i = P_Si.approves i := by
-      rw [hi_ballot_S, hi_ballot_Si, hi_ballot_eq]
-    -- Actually P_S and P_{S\i} differ: in P_S, voter i is in S (gets C\{c})
-    -- in P_{S\i}, voter i is not in S.erase i, so gets original ballot
-    -- But original ballot = C\{c}, so they're actually the same for voter i!
-    -- We need to show the two profiles are equal
-    -- For any voter v:
-    -- - If v = i: both have ballot C \ {c} (proven above)
-    -- - If v ≠ i: P_S has v ∈ S ↔ C\{c}, P_{S\i} has v ∈ S.erase i ↔ C\{c}
-    --   But v ∈ S ↔ v ∈ S.erase i when v ≠ i!
+  · -- Case 1: voter i already has ballot C \ {c}, so P_S and P_Si have same approvals
     have h_same_approves : P_S.approves = P_Si.approves := by
       ext v x
       by_cases hvi : v = i
-      · subst hvi
-        rw [h_same_ballot]
+      · simp only [hvi, hi_ballot_S, hi_ballot_Si, hi_ballot_eq]
       · simp only [P_S, P_Si, profile_with_switched]
-        have h1 : v ∈ S ↔ v ∈ S.erase i := by
-          rw [Finset.mem_erase]
-          exact ⟨fun h => ⟨hvi, h⟩, fun ⟨_, h⟩ => h⟩
+        have h1 : v ∈ S ↔ v ∈ S.erase i := by simp [Finset.mem_erase, hvi]
         simp only [h1]
-    -- So f(P_S) = f(P_{S\i}) by extensionality
-    have h_same_committee : f.resolute_committee P_S hres = f.resolute_committee P_Si hres := by
-      apply ABCRule.resolute_ballot_ext
-      · rfl
-      · rfl
-      · intro v _; exact congrFun h_same_approves v
+    have h_same_committee : f.resolute_committee P_S hres = f.resolute_committee P_Si hres :=
+      ABCRule.resolute_ballot_ext f P_S P_Si hres rfl rfl (fun v _ => congrFun h_same_approves v)
     rw [← h_same_committee]
     exact hc_in_S
 
@@ -509,16 +425,9 @@ lemma c_in_committee_induction_step
 
     -- P_{S\i} is an i-variant of P_S
     have hvar : P_S.is_i_variant P_Si i := by
-      refine ⟨rfl, rfl, ?_⟩
-      intro v _ hne
-      change (profile_with_switched inst c hc hm_ge_2 S).approves v =
-             (profile_with_switched inst c hc hm_ge_2 (S.erase i)).approves v
-      simp only [profile_with_switched]
-      have h1 : v ∈ S ↔ v ∈ S.erase i := by
-        rw [Finset.mem_erase]
-        constructor
-        · intro hvS; exact ⟨hne, hvS⟩
-        · intro ⟨_, hvS⟩; exact hvS
+      refine ⟨rfl, rfl, fun v _ hne => ?_⟩
+      simp only [P_S, P_Si, profile_with_switched]
+      have h1 : v ∈ S ↔ v ∈ S.erase i := by simp [Finset.mem_erase, hne]
       simp only [h1]
 
     -- The subset relation in P_S terms
@@ -526,14 +435,10 @@ lemma c_in_committee_induction_step
       rw [hi_ballot_S, hi_ballot_Si]
       exact hi_orig_sub
 
-    -- The k value proofs
-    -- The approval size in P_S is k
+    -- The approval size in P_S is k (since it's C \ {c} and |C| = k+1)
     have h_size : (P_S.approves i).card = k := by
-      rw [hi_ballot_S]
-      have hc_in : c ∈ inst.candidates := hc
-      have hc_sub : {c} ⊆ inst.candidates := Finset.singleton_subset_iff.mpr hc_in
-      rw [Finset.card_sdiff_of_subset hc_sub, Finset.card_singleton, hm]
-      omega
+      simp only [hi_ballot_S, Finset.card_sdiff_of_subset (Finset.singleton_subset_iff.mpr hc),
+        Finset.card_singleton, hm]; omega
 
     -- c ∈ f(P_S) means f(P_S) ≠ C \ {c} = P_S.approves i
     have hW_ne : f.resolute_committee P_S hres ≠ P_S.approves i := by
@@ -543,10 +448,7 @@ lemma c_in_committee_induction_step
       exact Finset.notMem_sdiff_of_mem_right (Finset.mem_singleton_self c) hc_in_S
 
     -- By sp_preserves_committee_ne_strict, f(P_{S\i}) ≠ P_S.approves i
-    have hi_voter_S : i ∈ P_S.voters := by
-      change i ∈ (profile_with_switched inst c hc hm_ge_2 S).voters
-      simp only [profile_with_switched]
-      exact hi_voter
+    have hi_voter_S : i ∈ P_S.voters := hi_voter  -- P_S.voters = inst.voters by definition
 
     have hW_ne' : f.resolute_committee P_Si hres ≠ P_S.approves i :=
       sp_preserves_committee_ne_strict_on_plentiful (f := f) (hsp := hsp) (hwf := hwf)
@@ -556,40 +458,13 @@ lemma c_in_committee_induction_step
 
     -- f(P_{S\i}) ≠ C \ {c}, so since m = k+1, we must have c ∈ f(P_{S\i})
     rw [hi_ballot_S] at hW_ne'
-    -- The committee has size k and is a subset of candidates (size k+1)
-    -- So either it contains c or it equals C \ {c}
-    -- Since it's not C \ {c}, it must contain c
-
-    -- Key lemma: when m = k+1, a size-k committee either contains c or equals C \ {c}
-    have h_wf := hwf (profile_with_switched inst c hc hm_ge_2 (S.erase i)) hpl_Si
-    have ⟨_, hW_prop⟩ := h_wf
-    have ⟨hW_card, hW_sub⟩ := hW_prop _ (f.resolute_committee_mem _ hres)
-    -- The committee W has |W| = k and W ⊆ candidates (size k+1)
-    -- So |candidates \ W| = 1, meaning W is missing exactly one candidate
-    -- Either c ∈ W, or c ∉ W (meaning W = candidates \ {c})
-    have hm' : (profile_with_switched inst c hc hm_ge_2 (S.erase i)).candidates.card = k + 1 := by
-      simp [profile_with_switched, hm]
-    by_contra hc_notin
-    -- If c ∉ W, then W ⊆ candidates \ {c}
-    -- Since |W| = k = |candidates \ {c}|, we have W = candidates \ {c}
-    have hW_sub' : f.resolute_committee P_Si hres ⊆ inst.candidates \ {c} := by
-      intro x hx
-      rw [Finset.mem_sdiff, Finset.mem_singleton]
-      constructor
-      · have hsub' : f.resolute_committee P_Si hres ⊆
-            (profile_with_switched inst c hc hm_ge_2 (S.erase i)).candidates := hW_sub
-        simp only [profile_with_switched] at hsub'
-        exact hsub' hx
-      · intro heq
-        rw [heq] at hx
-        exact hc_notin hx
-    have hcard_complement : (inst.candidates \ {c}).card = k := by
-      have hc_sub : {c} ⊆ inst.candidates := Finset.singleton_subset_iff.mpr hc
-      rw [Finset.card_sdiff_of_subset hc_sub, Finset.card_singleton, hm]
-      omega
-    have hW_eq : f.resolute_committee P_Si hres = inst.candidates \ {c} :=
-      Finset.eq_of_subset_of_card_le hW_sub' (by rw [hW_card, hcard_complement])
-    exact hW_ne' hW_eq
+    have h_wf := hwf P_Si hpl_Si
+    have ⟨hW_card, hW_sub⟩ := h_wf.2 _ (f.resolute_committee_mem _ hres)
+    have hW_sub_cands : f.resolute_committee P_Si hres ⊆ inst.candidates := by
+      simpa [P_Si, profile_with_switched] using hW_sub
+    have hW_card' : (f.resolute_committee P_Si hres).card = inst.candidates.card - 1 := by
+      simp only [hW_card, hm]; omega
+    exact committee_ne_complement_has_c inst.candidates c hc _ hW_sub_cands hW_card' hW_ne'
 
 -- ============================================================================
 -- MAIN LEMMA
@@ -638,12 +513,12 @@ theorem singleton_approvers_elected {k : ℕ}
   -- P' is party-list
   have hP'_pl : P'.is_party_list := to_party_list_is_party_list inst c hc hm_ge_2 hexcl
 
-  -- c is a candidate in P'
-  have hc_cand' : c ∈ P'.candidates := to_party_list_c_in_candidates inst c hc hm_ge_2 hexcl
+  -- c is a candidate in P' (P'.candidates = inst.candidates by definition)
+  have hc_cand' : c ∈ P'.candidates := hc
 
   -- The singleton party size for c in P' equals that in inst
   have h_size' : P'.singleton_party_size c * k ≥ P'.voters.card := by
-    rw [to_party_list_singleton_party_size, to_party_list_voters_card]
+    rw [to_party_list_singleton_party_size]
     exact h_size
 
   -- By proportionality, c is in f(P')
@@ -661,7 +536,7 @@ theorem singleton_approvers_elected {k : ℕ}
 
   -- The non-singleton voters
   let S := non_singleton_voters inst c
-  have hS_sub : S ⊆ inst.voters := non_singleton_voters_subset inst c
+  have hS_sub : S ⊆ inst.voters := Finset.filter_subset _ _
 
   -- Key: profile_with_switched with S = non_singleton_voters gives same committee as P'
   -- (because voters have same ballots)
