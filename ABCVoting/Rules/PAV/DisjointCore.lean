@@ -1,4 +1,5 @@
 import ABCVoting.Rules.PAV.EJR
+import ABCVoting.Rules.PAV.SwappingArgument
 import ABCVoting.Axioms.Core
 
 open Finset BigOperators
@@ -188,74 +189,16 @@ theorem pav_winner_in_disjoint_core (inst : ABCInstance V C k) (W : Finset C)
     avg_score_gain_lower_bound inst W T S l hT_disj hS_sub h_large hT_card hT_nonempty h_neg
 
   -- Step 2: Some c ∈ T has score gain ≥ n/k
-  obtain ⟨c, hc_in_T, hc_not_W, h_gain⟩ := exists_high_score_gain inst W T hT_nonempty hT_disj h_avg
+  obtain ⟨c, hc_in_T, hc_not_W, h_gain⟩ :=
+    exists_high_score_gain inst W T hT_nonempty hT_disj h_avg
 
-  -- Step 3: Add c to get W' with |W'| = k+1
-  let W' := W ∪ {c}
-  have hW'_card : W'.card = k + 1 := by
-    simp only [W', union_singleton, card_insert_of_notMem hc_not_W, h_card]
+  -- Step 3–5: use the abstract lemma to upgrade to a better size-`k` committee
+  obtain ⟨W'', hW''_sub, hW''_card, h_better⟩ :=
+    improving_committee_from_gain inst W c hW_sub h_card
+      (hT_sub hc_in_T) hc_not_W h_gain
 
-  -- Step 4: Sum of removal costs over W' is ≤ n
-  have h_sum_le : ∑ c' ∈ W', ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
-      1 / ((W' ∩ inst.approves i).card : ℚ) ≤ inst.voters.card :=
-    sum_removal_costs_le_voters inst W'
-
-  -- Step 5: By pigeonhole, ∃ c' with removal cost < n/k
-  have h_exists_small : ∃ c' ∈ W',
-      ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
-        1 / ((W' ∩ inst.approves i).card : ℚ) < (inst.voters.card : ℚ) / k := by
-    by_contra h_all_large
-    push_neg at h_all_large
-    have h_sum_ge : (k + 1) * ((inst.voters.card : ℚ) / k) ≤
-        ∑ c' ∈ W', ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
-          1 / ((W' ∩ inst.approves i).card : ℚ) := by
-      calc (k + 1) * ((inst.voters.card : ℚ) / k)
-          = ∑ _ ∈ W', (inst.voters.card : ℚ) / k := by
-            simp only [Finset.sum_const, hW'_card, nsmul_eq_mul, Nat.cast_add, Nat.cast_one]
-        _ ≤ ∑ c' ∈ W', ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
-              1 / ((W' ∩ inst.approves i).card : ℚ) :=
-            Finset.sum_le_sum (fun c' hc' => h_all_large c' hc')
-    have h_arith : (inst.voters.card : ℚ) < (k + 1) * ((inst.voters.card : ℚ) / k) := by
-      have hk_pos : (0 : ℚ) < k := Nat.cast_pos.mpr inst.k_pos
-      have hn_pos : (0 : ℚ) < inst.voters.card :=
-        Nat.cast_pos.mpr (card_pos.mpr inst.voters_nonempty)
-      field_simp
-      linarith
-    linarith
-
-  obtain ⟨c', hc'_in_W', h_small⟩ := h_exists_small
-
-  -- Step 6: W' \ {c'} has size k and higher PAV score than W
-  have h_size : (W' \ {c'}).card = k := by
-    simp only [card_sdiff, card_singleton, hW'_card, singleton_inter_of_mem hc'_in_W']
-    omega
-
-  have h_score_eq : inst.pav_score (W' \ {c'}) =
-      inst.pav_score W' - ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
-        1 / ((W' ∩ inst.approves i).card : ℚ) := by
-    have := pav_score_remove_candidate inst W' c' hc'_in_W'
-    linarith
-
-  have h_better : inst.pav_score W < inst.pav_score (W' \ {c'}) := by
-    calc inst.pav_score W
-        = inst.pav_score W' - (inst.pav_score W' - inst.pav_score W) := by ring
-      _ ≤ inst.pav_score W' - (inst.voters.card : ℚ) / k := by
-          have : inst.pav_score W' - inst.pav_score W =
-              inst.pav_score (W ∪ {c}) - inst.pav_score W := rfl
-          linarith
-      _ < inst.pav_score W' - ∑ i ∈ inst.voters.filter (fun i => c' ∈ inst.approves i),
-            1 / ((W' ∩ inst.approves i).card : ℚ) := by linarith
-      _ = inst.pav_score (W' \ {c'}) := by linarith
-
-  -- This contradicts W being a PAV winner
-  have h_W'_sub : W' \ {c'} ⊆ inst.candidates := by
-    intro x hx
-    simp only [W', mem_sdiff, mem_union, mem_singleton] at hx
-    obtain ⟨hx_in, _⟩ := hx
-    rcases hx_in with hx_W | rfl
-    · exact hW_sub hx_W
-    · exact hT_sub hc_in_T
-  have h_le := h_max (W' \ {c'}) h_W'_sub h_size
+  -- Contradiction with optimality of the PAV winner
+  have h_le := h_max W'' hW''_sub hW''_card
   linarith
 
 end ABCInstance
