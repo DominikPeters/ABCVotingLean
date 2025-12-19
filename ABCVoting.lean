@@ -32,6 +32,7 @@ import ABCVoting.Axioms.Strategyproofness
 import ABCVoting.Rules.PAV.Defs
 import ABCVoting.Rules.PAV.Pareto
 import ABCVoting.Rules.PAV.EJR
+import ABCVoting.Rules.PAV.Counterexamples
 
 -- ============================================================================
 -- VOTING RULES: METHOD OF EQUAL SHARES (MES)
