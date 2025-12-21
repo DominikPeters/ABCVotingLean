@@ -42,6 +42,14 @@ import ABCVoting.Rules.MES.Defs
 import ABCVoting.Rules.MES.EJR
 
 -- ============================================================================
+-- VOTING RULES: GREEDY COHESIVE RULE (GCR)
+-- ============================================================================
+
+import ABCVoting.Rules.GreedyCohesiveRule.Defs
+import ABCVoting.Rules.GreedyCohesiveRule.FJR
+import ABCVoting.Rules.GreedyCohesiveRule.Existence
+
+-- ============================================================================
 -- IMPOSSIBILITY RESULTS
 -- ============================================================================
 
