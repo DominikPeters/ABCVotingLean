@@ -15,9 +15,12 @@ This repository contains a formalization of the theory of approval-based committ
     * satisfies EJR+
     * satisfies disjoint core
     * satisfies core up to k=7
+    * may fail core for k=8
     * satisfies Pareto-optimality
 * Method of Equal Shares (MES), uncompleted
     * satisfies EJR+
+* Greedy Cohesive Rule (GCR)
+    * satisfies FJR, therefore FJR always exists
 
 # Impossibility Results
 
@@ -27,8 +30,7 @@ This repository contains a formalization of the theory of approval-based committ
 
 * Define priceability, show it implies PJR+
 * Define seqPhragmen, show it satisfies priceability and PJR+
-* Formalize various counterexamples (core failures for PAV at k=9, MES failing core; Phragmen failing EJR, PO-failures for MES and Phragmen)
-* Define Greedy Cohesive Rule and use it to prove that FJR exists
+* Formalize various counterexamples (MES failing core; Phragmen failing EJR, PO-failures for MES and Phragmen)
 * GJCR?
 * Sub-core?
 * Stuff from Janson (e.g. monotonicity properties)
