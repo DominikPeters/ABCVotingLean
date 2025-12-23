@@ -17,6 +17,7 @@ This repository contains a formalization of the theory of approval-based committ
     * satisfies disjoint core
     * satisfies core up to k=7
     * may fail core for k=8
+    * fails priceability
     * satisfies Pareto-optimality
 * Method of Equal Shares (MES), uncompleted
     * satisfies EJR+

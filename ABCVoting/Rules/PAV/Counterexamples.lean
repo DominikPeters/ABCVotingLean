@@ -14,6 +14,7 @@ does not satisfy certain properties in general.
 
 import ABCVoting.Rules.PAV.Defs
 import ABCVoting.Axioms.Core
+import ABCVoting.Axioms.Priceability
 
 open Finset BigOperators
 
@@ -216,7 +217,6 @@ theorem W_not_in_core : ¬inst.is_in_core W := by
   simp only [inst] at hv_util hv_prefer
   omega
 
--- ============================================================================
 -- PAV SCORE COMPUTATION (for verification)
 -- ============================================================================
 
@@ -322,6 +322,248 @@ lemma W'_inter_D_card_range (W' : Finset Candidate) (hW'_sub : W' ⊆ candidates
   -- Combined with hD_bound: (W' ∩ D).card ∈ {4, 5, 6}
   simp only [mem_insert, mem_singleton]
   omega
+
+-- ============================================================================
+-- PRICEABILITY VIOLATION
+-- ============================================================================
+
+lemma D_subset_W : D ⊆ W := by decide
+
+lemma supporters_c2 : inst.supporters 2 = {0} := by decide
+
+lemma supporters_c3 : inst.supporters 3 = {1} := by decide
+
+theorem W_not_priceable : ¬inst.is_priceable W := by
+  intro h_priceable
+  rcases h_priceable with ⟨b, p, hb, hprice⟩
+  rcases hprice with ⟨hvalid, hexhaust⟩
+  rcases hvalid with ⟨hnonneg, happr, hbudget, helect, hnonelect⟩
+  -- Sum of payments for candidates c₅..c₁₀ equals 6.
+  have hDsum : (∑ c ∈ D, p.total_payment inst c) = 6 := by
+    have hDpay : ∀ c ∈ D, p.total_payment inst c = 1 := by
+      intro c hc
+      exact helect c (D_subset_W hc)
+    calc
+      ∑ c ∈ D, p.total_payment inst c = ∑ c ∈ D, (1 : ℝ) := by
+        refine Finset.sum_congr rfl ?_
+        intro c hc
+        exact hDpay c hc
+      _ = (D.card : ℝ) := by simp
+      _ = 6 := by simp [D_card]
+  -- For c ∈ D, only voters 2 and 3 can pay (C1).
+  have hD_total (c : Candidate) (hc : c ∈ D) :
+      p.total_payment inst c = p 2 c + p 3 c := by
+    have hdisj0 : Disjoint D (approves 0) := by decide
+    have hdisj1 : Disjoint D (approves 1) := by decide
+    have h0 : p 0 c = 0 := by
+      apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 0 c
+      · simp [inst, voters]
+      · exact (Finset.disjoint_left.mp hdisj0) hc
+      · exact happr
+    have h1 : p 1 c = 0 := by
+      apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 1 c
+      · simp [inst, voters]
+      · exact (Finset.disjoint_left.mp hdisj1) hc
+      · exact happr
+    -- Expand the total payment over all voters.
+    simp [ABCInstance.PriceSystem.total_payment, inst, voters, h0, h1, Fin.sum_univ_four]
+  -- Use within-budget bounds for voters 2 and 3 to get b ≥ 3.
+  have hsum_le :
+      (∑ c ∈ D, p.total_payment inst c) ≤ 2 * b := by
+    have hsumD :
+        ∑ c ∈ D, p.total_payment inst c = ∑ c ∈ D, (p 2 c + p 3 c) := by
+      refine Finset.sum_congr rfl ?_
+      intro c hc
+      exact hD_total c hc
+    have hD_sub_candidates : D ⊆ inst.candidates := by
+      intro c _
+      exact Finset.mem_univ c
+    have hsum2_le : ∑ c ∈ D, p 2 c ≤ p.spending inst 2 := by
+      have h_disj : Disjoint D (inst.candidates \ D) := by
+        exact disjoint_sdiff
+      have h_union : D ∪ (inst.candidates \ D) = inst.candidates := by
+        simpa [Finset.union_sdiff_of_subset hD_sub_candidates]
+      have hsum :
+          ∑ c ∈ inst.candidates, p 2 c =
+            ∑ c ∈ D, p 2 c + ∑ c ∈ inst.candidates \ D, p 2 c := by
+        have hsum_union := (Finset.sum_union (s₁ := D) (s₂ := inst.candidates \ D)
+          (f := fun c => p 2 c) h_disj)
+        simpa [h_union] using hsum_union
+      have h_nonneg : 0 ≤ ∑ c ∈ inst.candidates \ D, p 2 c := by
+        apply Finset.sum_nonneg
+        intro c hc
+        exact hnonneg 2 (by simp [inst, voters]) c
+      unfold ABCInstance.PriceSystem.spending
+      linarith [hsum, h_nonneg]
+    have hsum3_le : ∑ c ∈ D, p 3 c ≤ p.spending inst 3 := by
+      have h_disj : Disjoint D (inst.candidates \ D) := by
+        exact disjoint_sdiff
+      have h_union : D ∪ (inst.candidates \ D) = inst.candidates := by
+        simpa [Finset.union_sdiff_of_subset hD_sub_candidates]
+      have hsum :
+          ∑ c ∈ inst.candidates, p 3 c =
+            ∑ c ∈ D, p 3 c + ∑ c ∈ inst.candidates \ D, p 3 c := by
+        have hsum_union := (Finset.sum_union (s₁ := D) (s₂ := inst.candidates \ D)
+          (f := fun c => p 3 c) h_disj)
+        simpa [h_union] using hsum_union
+      have h_nonneg : 0 ≤ ∑ c ∈ inst.candidates \ D, p 3 c := by
+        apply Finset.sum_nonneg
+        intro c hc
+        exact hnonneg 3 (by simp [inst, voters]) c
+      unfold ABCInstance.PriceSystem.spending
+      linarith [hsum, h_nonneg]
+    have hbudget2 : p.spending inst 2 ≤ b := hbudget 2 (by simp [inst, voters])
+    have hbudget3 : p.spending inst 3 ≤ b := hbudget 3 (by simp [inst, voters])
+    have hsum2_le_b : ∑ c ∈ D, p 2 c ≤ b := le_trans hsum2_le hbudget2
+    have hsum3_le_b : ∑ c ∈ D, p 3 c ≤ b := le_trans hsum3_le hbudget3
+    calc
+      ∑ c ∈ D, p.total_payment inst c
+          = ∑ c ∈ D, (p 2 c + p 3 c) := hsumD
+      _ = (∑ c ∈ D, p 2 c) + (∑ c ∈ D, p 3 c) := by
+        simp [Finset.sum_add_distrib]
+      _ ≤ b + b := by linarith
+      _ = 2 * b := by ring
+  have hb_ge : (3 : ℝ) ≤ b := by
+    linarith [hDsum, hsum_le]
+  -- C5 for c₃ (index 2) and c₄ (index 3) gives spending bounds for voters 0 and 1.
+  have h_unspent0_le : p.unspent inst b 0 ≤ 1 := by
+    have hmem : (2 : Candidate) ∈ inst.candidates \ W := by
+      simp [inst, candidates, W]
+    have h := hexhaust 2 hmem
+    simpa [supporters_c2] using h
+  have h_unspent1_le : p.unspent inst b 1 ≤ 1 := by
+    have hmem : (3 : Candidate) ∈ inst.candidates \ W := by
+      simp [inst, candidates, W]
+    have h := hexhaust 3 hmem
+    simpa [supporters_c3] using h
+  have h_spend0_ge : b - 1 ≤ p.spending inst 0 := by
+    unfold ABCInstance.PriceSystem.unspent at h_unspent0_le
+    linarith
+  have h_spend1_ge : b - 1 ≤ p.spending inst 1 := by
+    unfold ABCInstance.PriceSystem.unspent at h_unspent1_le
+    linarith
+  -- Voters 0 and 1 can only pay for candidates 0 and 1, so their total spending is 2.
+  have hsum01 : p.spending inst 0 + p.spending inst 1 = 2 := by
+    have h2_not0 : (0 : Candidate) ∉ approves 2 := by decide
+    have h2_not1 : (1 : Candidate) ∉ approves 2 := by decide
+    have h3_not0 : (0 : Candidate) ∉ approves 3 := by decide
+    have h3_not1 : (1 : Candidate) ∉ approves 3 := by decide
+    have hp0_2 : p 0 2 = 0 := by
+      have hmem : (2 : Candidate) ∈ inst.candidates \ W := by
+        simp [inst, candidates, W]
+      have htot := hnonelect 2 hmem
+      have h1 : p 1 2 = 0 := by
+        apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 1 2
+        · simp [inst, voters]
+        · decide
+        · exact happr
+      have h2 : p 2 2 = 0 := by
+        apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 2 2
+        · simp [inst, voters]
+        · decide
+        · exact happr
+      have h3 : p 3 2 = 0 := by
+        apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 3 2
+        · simp [inst, voters]
+        · decide
+        · exact happr
+      -- total payment is zero, so all individual payments are zero
+      have htot' : p 0 2 + p 1 2 + p 2 2 + p 3 2 = 0 := by
+        simpa [ABCInstance.PriceSystem.total_payment, inst, voters, Fin.sum_univ_four,
+          h1, h2, h3] using htot
+      linarith
+    have hp1_3 : p 1 3 = 0 := by
+      have hmem : (3 : Candidate) ∈ inst.candidates \ W := by
+        simp [inst, candidates, W]
+      have htot := hnonelect 3 hmem
+      have h0 : p 0 3 = 0 := by
+        apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 0 3
+        · simp [inst, voters]
+        · decide
+        · exact happr
+      have h2 : p 2 3 = 0 := by
+        apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 2 3
+        · simp [inst, voters]
+        · decide
+        · exact happr
+      have h3 : p 3 3 = 0 := by
+        apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 3 3
+        · simp [inst, voters]
+        · decide
+        · exact happr
+      have htot' : p 0 3 + p 1 3 + p 2 3 + p 3 3 = 0 := by
+        simpa [ABCInstance.PriceSystem.total_payment, inst, voters, Fin.sum_univ_four,
+          h0, h2, h3] using htot
+      linarith
+    have htot0 : p.total_payment inst 0 = 1 := by
+      exact helect 0 (by decide)
+    have htot1 : p.total_payment inst 1 = 1 := by
+      exact helect 1 (by decide)
+    have hpay2_0 : p 2 0 = 0 := by
+      apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 2 0
+      · simp [inst, voters]
+      · exact h2_not0
+      · exact happr
+    have hpay3_0 : p 3 0 = 0 := by
+      apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 3 0
+      · simp [inst, voters]
+      · exact h3_not0
+      · exact happr
+    have hpay2_1 : p 2 1 = 0 := by
+      apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 2 1
+      · simp [inst, voters]
+      · exact h2_not1
+      · exact happr
+    have hpay3_1 : p 3 1 = 0 := by
+      apply ABCInstance.PriceSystem.payment_zero_of_not_approved p inst 3 1
+      · simp [inst, voters]
+      · exact h3_not1
+      · exact happr
+    have htot0' : p 0 0 + p 1 0 = 1 := by
+      have h := htot0
+      simpa [ABCInstance.PriceSystem.total_payment, inst, voters, Fin.sum_univ_four,
+        hpay2_0, hpay3_0] using h
+    have htot1' : p 0 1 + p 1 1 = 1 := by
+      have h := htot1
+      simpa [ABCInstance.PriceSystem.total_payment, inst, voters, Fin.sum_univ_four,
+        hpay2_1, hpay3_1] using h
+    have hspend0 :
+        p.spending inst 0 = p 0 0 + p 0 1 := by
+      unfold ABCInstance.PriceSystem.spending
+      have hsub : approves 0 ⊆ inst.candidates :=
+        inst.approves_subset 0 (by simp [inst, voters])
+      have hsum := (Finset.sum_subset (f := fun c => p 0 c) hsub ?_).symm
+      · calc
+          ∑ c ∈ inst.candidates, p 0 c
+              = ∑ c ∈ approves 0, p 0 c := hsum
+          _ = p 0 0 + p 0 1 + p 0 2 := by simp [approves, add_assoc]
+          _ = p 0 0 + p 0 1 := by simp [hp0_2]
+      · intro c hc hnot
+        exact happr 0 (by simp [inst, voters]) c hnot
+    have hspend1 :
+        p.spending inst 1 = p 1 0 + p 1 1 := by
+      unfold ABCInstance.PriceSystem.spending
+      have hsub : approves 1 ⊆ inst.candidates :=
+        inst.approves_subset 1 (by simp [inst, voters])
+      have hsum := (Finset.sum_subset (f := fun c => p 1 c) hsub ?_).symm
+      · calc
+          ∑ c ∈ inst.candidates, p 1 c
+              = ∑ c ∈ approves 1, p 1 c := hsum
+          _ = p 1 0 + p 1 1 + p 1 3 := by simp [approves, add_assoc]
+          _ = p 1 0 + p 1 1 := by simp [hp1_3]
+      · intro c hc hnot
+        exact happr 1 (by simp [inst, voters]) c hnot
+    calc
+      p.spending inst 0 + p.spending inst 1
+          = (p 0 0 + p 0 1) + (p 1 0 + p 1 1) := by
+            simp [hspend0, hspend1]
+      _ = (p 0 0 + p 1 0) + (p 0 1 + p 1 1) := by ring
+      _ = 1 + 1 := by simp [htot0', htot1']
+      _ = 2 := by ring
+  -- Combine bounds to get the contradiction b ≥ 3 and b ≤ 2.
+  have hb_le : b ≤ 2 := by
+    linarith [h_spend0_ge, h_spend1_ge, hsum01]
+  linarith
 
 /--
 Harmonic H(5) = 137/60.
@@ -727,7 +969,7 @@ theorem W_is_pav_winner : inst.is_pav_winner W := by
     linarith
 
 -- ============================================================================
--- MAIN THEOREM
+-- MAIN THEOREMS
 -- ============================================================================
 
 /--
@@ -740,5 +982,16 @@ theorem pav_not_in_core_k8 :
     ∃ (inst : ABCInstance Voter Candidate k),
       ∃ W : Finset Candidate, inst.is_pav_winner W ∧ ¬inst.is_in_core W :=
   ⟨inst, W, W_is_pav_winner, W_not_in_core⟩
+
+/--
+**Main Result**: PAV may fail priceability when k = 8.
+
+There exists an ABC instance with k = 8 where a PAV winning committee
+is not priceable.
+-/
+theorem pav_not_priceable_k8 :
+    ∃ (inst : ABCInstance Voter Candidate k),
+      ∃ W : Finset Candidate, inst.is_pav_winner W ∧ ¬inst.is_priceable W :=
+  ⟨inst, W, W_is_pav_winner, W_not_priceable⟩
 
 end PAVCounterexamples
