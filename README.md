@@ -20,6 +20,8 @@ This repository contains a formalization of the theory of approval-based committ
     * satisfies Pareto-optimality
 * Method of Equal Shares (MES), uncompleted
     * satisfies EJR+
+* Sequential Phragmén
+    * satisfies priceability, therefore PJR+
 * Greedy Cohesive Rule (GCR)
     * satisfies FJR, therefore FJR always exists
 
