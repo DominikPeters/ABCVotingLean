@@ -5,9 +5,10 @@ This repository contains a formalization of the theory of approval-based committ
 # Axioms
 
 * JR, PJR, EJR, EJR+, FJR, FPJR
+* Priceability
 * Core, Disjoint Core
 * Pareto-optimality
-* Implications between axioms (e.g., Core implies FJR, EJR+ implies EJR)
+* Implications between axioms (e.g., Core implies FJR, EJR+ implies EJR, Priceability implies PJR+)
 
 # Voting Rules
 
@@ -39,3 +40,5 @@ This repository contains a formalization of the theory of approval-based committ
 * Proportionality degree (definition, EJR => 1/2, l-1 => EJR, extreme stretch goal: prop degree of Phragmen, and seqPav results)
 * CC and utilitarian approximations?
 * Approximations to the core, disjoint core => 2-utility approximation, extreme stretch goal: show 32-Kamesh result
+* Peters-Skowron welfarism impossibilities, Pigou-Dalton lower bound on core approximation
+* log k core approximation by MES
