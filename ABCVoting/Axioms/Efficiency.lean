@@ -69,6 +69,29 @@ def ABCRule.SatisfiesWeakEfficiency (f : ABCRule V C k) : Prop :=
     inst.plentiful →
     ∀ W ∈ f inst, ∀ c ∈ W, ¬inst.is_unapproved c
 
+-- ============================================================================
+-- DOMINATING CANDIDATE EFFICIENCY (Kluiving et al.)
+-- ============================================================================
+
+/--
+Candidate a dominates candidate b if every voter who approves b also approves a,
+and at least one voter approves a but not b.
+-/
+def dominates (inst : ABCInstance V C k) (a b : C) : Prop :=
+  (∀ v ∈ inst.voters, b ∈ inst.approves v → a ∈ inst.approves v) ∧
+  (∃ v ∈ inst.voters, a ∈ inst.approves v ∧ b ∉ inst.approves v)
+
+/--
+Dominating candidate efficiency: if a dominates b, then any winning committee
+containing b must also contain a.
+-/
+def ABCRule.SatisfiesDominatingCandidateEfficiency (f : ABCRule V C k) : Prop :=
+  ∀ (inst : ABCInstance V C k) (a b : C),
+    a ∈ inst.candidates →
+    b ∈ inst.candidates →
+    inst.dominates a b →
+    ∀ W ∈ f inst, b ∈ W → a ∈ W
+
 /--
 Equivalently: every elected candidate must have at least one supporter.
 -/

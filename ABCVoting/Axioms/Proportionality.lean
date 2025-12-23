@@ -111,6 +111,15 @@ def ABCRule.SatisfiesProportionality (f : ABCRule V C k) : Prop :=
     ∀ W ∈ f inst, c ∈ W
 
 /--
+Minimal proportionality (Kluiving et al.):
+
+Identical to the weak proportionality axiom used by Peters.
+We keep a separate name to match the impossibility statement.
+-/
+def ABCRule.SatisfiesMinimalProportionality (f : ABCRule V C k) : Prop :=
+  f.SatisfiesProportionality
+
+/--
 For a resolute rule satisfying proportionality, on party-list profiles,
 sufficiently large singleton parties get their candidate in the committee.
 -/

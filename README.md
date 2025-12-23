@@ -24,7 +24,8 @@ This repository contains a formalization of the theory of approval-based committ
 
 # Impossibility Results
 
-* Peters' impossibility: No ABC rule can satisfy strategyproofness, weak efficiency, and proportionality.
+* Peters' impossibility: No resolute ABC rule can satisfy strategyproofness, weak efficiency, and proportionality.
+* [Kluiving–de Vries–Vrijbergen–Boixel–Endriss impossibility](https://staff.fnwi.uva.nl/u.endriss/pubs/files/KluivingEtAlECAI2020.pdf): Analog of Peters' impossibility for irresolute rules.
 
 # Future Work
 
@@ -36,6 +37,5 @@ This repository contains a formalization of the theory of approval-based committ
 * Stuff from Janson (e.g. monotonicity properties)
 * perhaps: PAV intersects core for k = 8
 * Proportionality degree (definition, EJR => 1/2, l-1 => EJR, extreme stretch goal: prop degree of Phragmen, and seqPav results)
-* Prove impossibility for irresolute rules (https://staff.fnwi.uva.nl/u.endriss/pubs/files/KluivingEtAlECAI2020.pdf)
 * CC and utilitarian approximations?
 * Approximations to the core, disjoint core => 2-utility approximation, extreme stretch goal: show 32-Kamesh result

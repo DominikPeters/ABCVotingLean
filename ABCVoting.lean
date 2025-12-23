@@ -54,3 +54,4 @@ import ABCVoting.Rules.GreedyCohesiveRule.Existence
 -- ============================================================================
 
 import ABCVoting.Impossibilities.Peters.Main
+import ABCVoting.Impossibilities.KluivingDeVriesVrijbergenBoixelEndriss.Main

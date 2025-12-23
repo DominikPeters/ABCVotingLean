@@ -97,6 +97,49 @@ lemma modify_approval_other (inst : ABCInstance V C k) (i : V) (A' : Finset C)
   simp [modify_approval, hne]
 
 -- ============================================================================
+-- CAUTIOUS (KELLY) PREFERENCES
+-- ============================================================================
+
+/--
+Committee preference induced by an approval set A: W is weakly preferred to W'
+iff it contains at least as many approved candidates.
+-/
+def committee_prefeq (A : Finset C) (W W' : Finset C) : Prop :=
+  (W ∩ A).card ≥ (W' ∩ A).card
+
+/--
+Strict committee preference induced by A.
+-/
+def committee_pref (A : Finset C) (W W' : Finset C) : Prop :=
+  committee_prefeq A W W' ∧ ¬committee_prefeq A W' W
+
+/--
+Kelly (cautious) preference between nonempty sets of committees.
+-/
+def cautious_prefeq (A : Finset C) (X X' : Finset (Finset C)) : Prop :=
+  ∀ W ∈ X, ∀ W' ∈ X', committee_prefeq A W W'
+
+/--
+Strict cautious preference (Kelly extension).
+-/
+def cautious_pref (A : Finset C) (X X' : Finset (Finset C)) : Prop :=
+  cautious_prefeq A X X' ∧ ¬cautious_prefeq A X' X
+
+-- ============================================================================
+-- CAUTIOUS STRATEGYPROOFNESS (Kluiving et al.)
+-- ============================================================================
+
+/--
+Immune to manipulation by cautious voters: no voter can change her ballot
+to obtain a strictly Kelly-better set of winning committees.
+-/
+def ABCRule.SatisfiesCautiousStrategyproofness (f : ABCRule V C k) : Prop :=
+  ∀ (inst inst' : ABCInstance V C k) (i : V),
+    i ∈ inst.voters →
+    inst.is_i_variant inst' i →
+    ¬cautious_pref (inst.approves i) (f inst') (f inst)
+
+-- ============================================================================
 -- RESOLUTE STRATEGYPROOFNESS
 -- ============================================================================
 
