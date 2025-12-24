@@ -8,6 +8,8 @@ This repository contains a formalization of the theory of approval-based committ
 * Priceability
 * Core, Disjoint Core
 * Pareto-optimality
+* Strategyproofness
+* Committee Monotonicity
 * Implications between axioms (e.g., Core implies FJR, EJR+ implies EJR, Priceability implies PJR+)
 
 # Voting Rules
@@ -23,6 +25,7 @@ This repository contains a formalization of the theory of approval-based committ
     * satisfies EJR+
 * Sequential Phragmén
     * satisfies priceability, therefore PJR+
+    * satisfies committee monotonicity
 * Greedy Cohesive Rule (GCR)
     * satisfies FJR, therefore FJR always exists
 
@@ -33,8 +36,6 @@ This repository contains a formalization of the theory of approval-based committ
 
 # Future Work
 
-* Define priceability, show it implies PJR+
-* Define seqPhragmen, show it satisfies priceability and PJR+
 * Formalize various counterexamples (MES failing core; Phragmen failing EJR, PO-failures for MES and Phragmen)
 * GJCR?
 * Sub-core?
