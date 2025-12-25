@@ -127,12 +127,6 @@ def initial_state (inst : ABCInstance V C k) (max_rounds : ℕ) : MESState V C k
 -- ============================================================================
 
 /--
-Get a sorted list of candidates (for canonical iteration order).
--/
-def candidates_list (inst : ABCInstance V C k) : List C :=
-  inst.candidates.sort (· ≤ ·)
-
-/--
 Find the candidate with minimal ρ-value among those not yet selected.
 Returns `none` if no candidate is affordable.
 -/

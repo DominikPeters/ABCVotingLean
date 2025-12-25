@@ -6,6 +6,7 @@ import Mathlib.Algebra.BigOperators.Ring.Finset
 import Mathlib.Algebra.Order.GroupWithZero.Unbundled.Basic
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Algebra.Order.Ring.Rat
+import Mathlib.Data.Finset.Sort
 import Mathlib.Tactic
 
 open Finset BigOperators
@@ -67,6 +68,12 @@ The union of all candidates approved by any voter in a group S.
 -/
 def union_approvals (inst : ABCInstance V C k) (S : Finset V) : Finset C :=
   S.biUnion inst.approves
+
+/--
+A sorted list of candidates (for canonical iteration order).
+-/
+def candidates_list (inst : ABCInstance V C k) [LinearOrder C] : List C :=
+  inst.candidates.sort (· ≤ ·)
 
 /--
 A group S is ℓ-large if it contains at least ℓn/k voters.

@@ -93,12 +93,6 @@ def initial_state (inst : ABCInstance V C k) (max_rounds : ℕ) : SeqPhragmenSta
 -- ============================================================================
 
 /--
-Get a sorted list of candidates (for canonical iteration order / tie-breaking).
--/
-def candidates_list (inst : ABCInstance V C k) : List C :=
-  inst.candidates.sort (· ≤ ·)
-
-/--
 Find the candidate with minimal s-value among those not yet selected.
 Returns `none` if no candidate has supporters (shouldn't happen normally).
 -/
