@@ -12,6 +12,7 @@ This file proves that Sequential Phragmén satisfies committee monotonicity:
 import ABCVoting.Rules.SeqPhragmen.Defs
 import ABCVoting.Rules.SeqPhragmen.Priceability
 import ABCVoting.Axioms.CommitteeMonotonicity
+import ABCVoting.Axioms.Efficiency
 
 open Finset BigOperators
 
@@ -218,12 +219,6 @@ theorem seq_phragmen_committee_monotonicity_down
 -- ============================================================================
 
 /--
-The set of candidates with at least one supporter.
--/
-def approvedCandidates (inst : ABCInstance V C k) : Finset C :=
-  inst.candidates.filter fun c => (inst.supporters c).Nonempty
-
-/--
 The instance has "enough approved candidates" if at least k candidates have supporters.
 This is needed for upward monotonicity.
 -/
@@ -231,12 +226,23 @@ def has_enough_approved_candidates (inst : ABCInstance V C k) : Prop :=
   k ≤ (approvedCandidates inst).card
 
 lemma approvedCandidates_subset_candidates (inst : ABCInstance V C k) :
-    approvedCandidates inst ⊆ inst.candidates :=
-  Finset.filter_subset _ _
+    approvedCandidates inst ⊆ inst.candidates := by
+  intro c hc
+  rcases Finset.mem_biUnion.mp hc with ⟨v, hv, hcv⟩
+  exact inst.approves_subset v hv hcv
 
 lemma mem_approvedCandidates_iff (inst : ABCInstance V C k) (c : C) :
     c ∈ approvedCandidates inst ↔ c ∈ inst.candidates ∧ (inst.supporters c).Nonempty := by
-  simp [approvedCandidates]
+  constructor
+  · intro hc
+    rcases Finset.mem_biUnion.mp hc with ⟨v, hv, hcv⟩
+    refine ⟨inst.approves_subset v hv hcv, ?_⟩
+    refine ⟨v, ?_⟩
+    simp [supporters, hv, hcv]
+  · rintro ⟨_, hsup⟩
+    rcases hsup with ⟨v, hv⟩
+    rcases (by simpa [supporters] using hv) with ⟨hvoters, hcv⟩
+    exact Finset.mem_biUnion.mpr ⟨v, hvoters, hcv⟩
 
 /--
 If fewer candidates are selected than approved candidates exist,
@@ -301,12 +307,12 @@ lemma exists_minimizing_candidate (inst : ABCInstance V C k) (loads : V → ℚ)
 /--
 Update loads: supporters of c get load s, others unchanged.
 -/
-def update_loads (inst : ABCInstance V C k) (loads : V → ℚ) (c : C) (s : ℚ) : V → ℚ :=
+def seq_phragmen_update_loads (inst : ABCInstance V C k) (loads : V → ℚ) (c : C) (s : ℚ) : V → ℚ :=
   fun v => if c ∈ inst.approves v then s else loads v
 
-lemma update_loads_spec (inst : ABCInstance V C k) (loads : V → ℚ) (c : C) (s : ℚ)
+lemma seq_phragmen_update_loads_spec (inst : ABCInstance V C k) (loads : V → ℚ) (c : C) (s : ℚ)
     (v : V) (_hv : v ∈ inst.voters) :
-    update_loads inst loads c s v = if c ∈ inst.approves v then s else loads v := rfl
+    seq_phragmen_update_loads inst loads c s v = if c ∈ inst.approves v then s else loads v := rfl
 
 /--
 Construct a new round given:
@@ -327,7 +333,7 @@ noncomputable def construct_round (inst : ABCInstance V C k)
         s_value_num inst start_loads c' * (inst.supporters c).card) :
     SeqPhragmenRound V C inst where
   start_loads := start_loads
-  end_loads := update_loads inst start_loads c (s_value_num inst start_loads c / (inst.supporters c).card)
+  end_loads := seq_phragmen_update_loads inst start_loads c (s_value_num inst start_loads c / (inst.supporters c).card)
   already_selected := already_selected
   selected := c
   selected_s := s_value_num inst start_loads c / (inst.supporters c).card
@@ -643,7 +649,7 @@ theorem seq_phragmen_committee_monotonicity_up
   -- Build the new round (round k in 0-indexed)
   let new_round : SeqPhragmenRound V C inst' := {
     start_loads := w_transferred.final_loads
-    end_loads := update_loads inst' w_transferred.final_loads best s_val
+    end_loads := seq_phragmen_update_loads inst' w_transferred.final_loads best s_val
     already_selected := w.committee  -- = w_transferred.committee
     selected := best
     selected_s := s_val

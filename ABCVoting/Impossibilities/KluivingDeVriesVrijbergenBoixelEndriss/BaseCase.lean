@@ -87,7 +87,7 @@ lemma dominates_c_a_A : instA.dominates c a := by
   · intro v _ ha
     fin_cases v <;> simp [instA, mkInstance, P_A, v₁, v₂] at ha ⊢
   · refine ⟨v₁, by simp [instA, mkInstance, allVoters], ?_, ?_⟩
-    · simp [instA, mkInstance, P_A, a, c, d]
+    · simp [instA, mkInstance, P_A, c, d]
     · simp [instA, mkInstance, P_A, a, c, d]
 
 lemma dominates_c_b_A : instA.dominates c b := by
@@ -95,7 +95,7 @@ lemma dominates_c_b_A : instA.dominates c b := by
   · intro v _ hb
     fin_cases v <;> simp [instA, mkInstance, P_A, v₁, v₂] at hb ⊢
   · refine ⟨v₁, by simp [instA, mkInstance, allVoters], ?_, ?_⟩
-    · simp [instA, mkInstance, P_A, b, c, d]
+    · simp [instA, mkInstance, P_A, c, d]
     · simp [instA, mkInstance, P_A, b, c, d]
 
 lemma dominates_d_a_A : instA.dominates d a := by
@@ -103,7 +103,7 @@ lemma dominates_d_a_A : instA.dominates d a := by
   · intro v _ ha
     fin_cases v <;> simp [instA, mkInstance, P_A, v₁, v₂] at ha ⊢
   · refine ⟨v₁, by simp [instA, mkInstance, allVoters], ?_, ?_⟩
-    · simp [instA, mkInstance, P_A, a, c, d]
+    · simp [instA, mkInstance, P_A, c, d]
     · simp [instA, mkInstance, P_A, a, c, d]
 
 lemma dominates_d_b_A : instA.dominates d b := by
@@ -111,7 +111,7 @@ lemma dominates_d_b_A : instA.dominates d b := by
   · intro v _ hb
     fin_cases v <;> simp [instA, mkInstance, P_A, v₁, v₂] at hb ⊢
   · refine ⟨v₁, by simp [instA, mkInstance, allVoters], ?_, ?_⟩
-    · simp [instA, mkInstance, P_A, b, c, d]
+    · simp [instA, mkInstance, P_A, c, d]
     · simp [instA, mkInstance, P_A, b, c, d]
 
 lemma dominates_c_b_A' : instA'.dominates c b := by
@@ -119,7 +119,7 @@ lemma dominates_c_b_A' : instA'.dominates c b := by
   · intro v _ hb
     fin_cases v <;> simp [instA', mkInstance, P_A', v₁, v₂] at hb ⊢
   · refine ⟨v₁, by simp [instA', mkInstance, allVoters], ?_, ?_⟩
-    · simp [instA', mkInstance, P_A', b, c, d]
+    · simp [instA', mkInstance, P_A', c, d]
     · simp [instA', mkInstance, P_A', b, c, d]
 
 lemma dominates_d_b_A' : instA'.dominates d b := by
@@ -127,7 +127,7 @@ lemma dominates_d_b_A' : instA'.dominates d b := by
   · intro v _ hb
     fin_cases v <;> simp [instA', mkInstance, P_A', v₁, v₂] at hb ⊢
   · refine ⟨v₁, by simp [instA', mkInstance, allVoters], ?_, ?_⟩
-    · simp [instA', mkInstance, P_A', b, c, d]
+    · simp [instA', mkInstance, P_A', c, d]
     · simp [instA', mkInstance, P_A', b, c, d]
 
 lemma dominates_c_a_A'' : instA''.dominates c a := by
@@ -135,7 +135,7 @@ lemma dominates_c_a_A'' : instA''.dominates c a := by
   · intro v _ ha
     fin_cases v <;> simp [instA'', mkInstance, P_A'', v₁, v₂] at ha ⊢
   · refine ⟨v₁, by simp [instA'', mkInstance, allVoters], ?_, ?_⟩
-    · simp [instA'', mkInstance, P_A'', a, c, d]
+    · simp [instA'', mkInstance, P_A'', c, d]
     · simp [instA'', mkInstance, P_A'', a, c, d]
 
 lemma dominates_d_a_A'' : instA''.dominates d a := by
@@ -143,7 +143,7 @@ lemma dominates_d_a_A'' : instA''.dominates d a := by
   · intro v _ ha
     fin_cases v <;> simp [instA'', mkInstance, P_A'', v₁, v₂] at ha ⊢
   · refine ⟨v₁, by simp [instA'', mkInstance, allVoters], ?_, ?_⟩
-    · simp [instA'', mkInstance, P_A'', a, c, d]
+    · simp [instA'', mkInstance, P_A'', c, d]
     · simp [instA'', mkInstance, P_A'', a, c, d]
 
 -- ============================================================================

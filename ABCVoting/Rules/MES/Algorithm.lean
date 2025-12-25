@@ -117,7 +117,7 @@ structure MESState (V C : Type*) [DecidableEq V] [DecidableEq C] (k : ℕ)
 /--
 Initial state: all voters have budget 1, no candidates selected.
 -/
-def initial_state (inst : ABCInstance V C k) (max_rounds : ℕ) : MESState V C k inst where
+def mes_initial_state (inst : ABCInstance V C k) (max_rounds : ℕ) : MESState V C k inst where
   budgets := fun _ => 1
   selected := ∅
   rounds_remaining := max_rounds
@@ -130,7 +130,7 @@ def initial_state (inst : ABCInstance V C k) (max_rounds : ℕ) : MESState V C k
 Find the candidate with minimal ρ-value among those not yet selected.
 Returns `none` if no candidate is affordable.
 -/
-def find_best_candidate (inst : ABCInstance V C k) (budgets : V → ℚ)
+def mes_find_best_candidate (inst : ABCInstance V C k) (budgets : V → ℚ)
     (already_selected : Finset C) : Option (C × ℚ) :=
   let available := (inst.candidates \ already_selected).sort (· ≤ ·)
   -- Compute ρ for each available candidate
@@ -163,7 +163,7 @@ Returns the updated state, or the same state if no candidate is affordable.
 def mes_step (inst : ABCInstance V C k) (state : MESState V C k inst) : MESState V C k inst :=
   if state.rounds_remaining = 0 then state
   else
-    match find_best_candidate inst state.budgets state.selected with
+    match mes_find_best_candidate inst state.budgets state.selected with
     | none => { state with rounds_remaining := 0 }  -- No affordable candidate, terminate
     | some (c, ρ) =>
       { budgets := update_budgets inst state.budgets c ρ
@@ -200,7 +200,7 @@ This runs MES starting with all voters having budget 1, selecting candidates
 until either k candidates are selected or no candidate is affordable.
 -/
 def mes_algorithm (inst : ABCInstance V C k) : Finset C :=
-  mes_loop inst (initial_state inst k)
+  mes_loop inst (mes_initial_state inst k)
 
 -- ============================================================================
 -- ALTERNATIVE: LIST-BASED OUTPUT (for ordered results)
@@ -213,7 +213,7 @@ def mes_loop_list (inst : ABCInstance V C k) (state : MESState V C k inst)
     (acc : List C) : List C :=
   if h : state.rounds_remaining = 0 then acc.reverse
   else
-    match find_best_candidate inst state.budgets state.selected with
+    match mes_find_best_candidate inst state.budgets state.selected with
     | none => acc.reverse
     | some (c, ρ) =>
       let new_state : MESState V C k inst :=
@@ -230,7 +230,7 @@ termination_by state.rounds_remaining
 The MES algorithm returning the selection order.
 -/
 def mes_algorithm_list (inst : ABCInstance V C k) : List C :=
-  mes_loop_list inst (initial_state inst k) []
+  mes_loop_list inst (mes_initial_state inst k) []
 
 -- ============================================================================
 -- BASIC PROPERTIES (for connecting to witness definition)

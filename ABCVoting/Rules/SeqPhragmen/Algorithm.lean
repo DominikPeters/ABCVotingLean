@@ -83,7 +83,7 @@ structure SeqPhragmenState (V C : Type*) [DecidableEq V] [DecidableEq C] (k : �
 /--
 Initial state: all voters have load 0, no candidates selected.
 -/
-def initial_state (inst : ABCInstance V C k) (max_rounds : ℕ) : SeqPhragmenState V C k inst where
+def seq_phragmen_initial_state (inst : ABCInstance V C k) (max_rounds : ℕ) : SeqPhragmenState V C k inst where
   loads := fun _ => 0
   selected := ∅
   rounds_remaining := max_rounds
@@ -96,7 +96,7 @@ def initial_state (inst : ABCInstance V C k) (max_rounds : ℕ) : SeqPhragmenSta
 Find the candidate with minimal s-value among those not yet selected.
 Returns `none` if no candidate has supporters (shouldn't happen normally).
 -/
-def find_best_candidate (inst : ABCInstance V C k) (loads : V → ℚ)
+def seq_phragmen_find_best_candidate (inst : ABCInstance V C k) (loads : V → ℚ)
     (already_selected : Finset C) : Option (C × ℚ) :=
   let available := (inst.candidates \ already_selected).sort (· ≤ ·)
   -- Filter to candidates with at least one supporter
@@ -125,7 +125,7 @@ def seq_phragmen_step (inst : ABCInstance V C k) (state : SeqPhragmenState V C k
     : SeqPhragmenState V C k inst :=
   if state.rounds_remaining = 0 then state
   else
-    match find_best_candidate inst state.loads state.selected with
+    match seq_phragmen_find_best_candidate inst state.loads state.selected with
     | none => { state with rounds_remaining := 0 }  -- No valid candidate, terminate
     | some (c, s) =>
       { loads := update_loads inst state.loads c s
@@ -134,7 +134,7 @@ def seq_phragmen_step (inst : ABCInstance V C k) (state : SeqPhragmenState V C k
 
 -- State after `n` algorithm steps.
 def seq_phragmen_state_at (inst : ABCInstance V C k) : ℕ → SeqPhragmenState V C k inst
-  | 0 => initial_state inst k
+  | 0 => seq_phragmen_initial_state inst k
   | n + 1 => seq_phragmen_step inst (seq_phragmen_state_at inst n)
 
 -- ============================================================================
@@ -161,7 +161,7 @@ def seq_phragmen_loop_list (inst : ABCInstance V C k) (state : SeqPhragmenState 
     (acc : List C) : List C :=
   if h : state.rounds_remaining = 0 then acc.reverse
   else
-    match find_best_candidate inst state.loads state.selected with
+    match seq_phragmen_find_best_candidate inst state.loads state.selected with
     | none => acc.reverse
     | some (c, s) =>
       let new_state : SeqPhragmenState V C k inst :=
@@ -178,7 +178,7 @@ termination_by state.rounds_remaining
 The Sequential Phragmén algorithm returning the selection order.
 -/
 def seq_phragmen_algorithm_list (inst : ABCInstance V C k) : List C :=
-  seq_phragmen_loop_list inst (initial_state inst k) []
+  seq_phragmen_loop_list inst (seq_phragmen_initial_state inst k) []
 
 -- ============================================================================
 -- LOADS OUTPUT (for debugging / verification)
@@ -195,7 +195,7 @@ def seq_phragmen_final_state (inst : ABCInstance V C k) : SeqPhragmenState V C k
       if new_state.rounds_remaining = state.rounds_remaining then state
       else new_state
   -- Run k iterations
-  (List.range k).foldl (fun s _ => loop s) (initial_state inst k)
+  (List.range k).foldl (fun s _ => loop s) (seq_phragmen_initial_state inst k)
 
 -- ============================================================================
 -- BASIC PROPERTIES
@@ -278,13 +278,13 @@ lemma exists_candidate_with_supporters_of_plentiful (inst : ABCInstance V C k)
   exact exists_candidate_with_supporters_of_card_lt inst selected hsubset hcard'
 
 omit [LinearOrder V] in
-lemma find_best_candidate_some_of_exists (inst : ABCInstance V C k) (loads : V → ℚ)
+lemma seq_phragmen_find_best_candidate_some_of_exists (inst : ABCInstance V C k) (loads : V → ℚ)
     (selected : Finset C)
     (hex : ∃ c ∈ inst.candidates \ selected, (inst.supporters c).Nonempty) :
-    ∃ c s, find_best_candidate inst loads selected = some (c, s) := by
+    ∃ c s, seq_phragmen_find_best_candidate inst loads selected = some (c, s) := by
   classical
   rcases hex with ⟨c, hc, hsup⟩
-  unfold find_best_candidate
+  unfold seq_phragmen_find_best_candidate
   set available := (inst.candidates \ selected).sort (· ≤ ·) with havailable
   set candidates_with_s :=
     available.filterMap (fun c =>
@@ -328,12 +328,12 @@ lemma find_best_candidate_some_of_exists (inst : ABCInstance V C k) (loads : V �
       exact ⟨c', s', by simp [hlist']⟩
 
 omit [LinearOrder V] in
-lemma find_best_candidate_mem (inst : ABCInstance V C k) (loads : V → ℚ)
+lemma seq_phragmen_find_best_candidate_mem (inst : ABCInstance V C k) (loads : V → ℚ)
     (already_selected : Finset C) (c : C) (s : ℚ)
-    (h : find_best_candidate inst loads already_selected = some (c, s)) :
+    (h : seq_phragmen_find_best_candidate inst loads already_selected = some (c, s)) :
     c ∈ inst.candidates \ already_selected := by
   classical
-  unfold find_best_candidate at h
+  unfold seq_phragmen_find_best_candidate at h
   set available := (inst.candidates \ already_selected).sort (· ≤ ·) with havailable
   set candidates_with_s :=
     available.filterMap (fun c =>
@@ -383,12 +383,12 @@ lemma find_best_candidate_mem (inst : ABCInstance V C k) (loads : V → ℚ)
     exact (Finset.mem_sort (s := inst.candidates \ already_selected) (r := (· ≤ ·))).1 hc_list'
 
 omit [LinearOrder V] in
-lemma find_best_candidate_supporters_nonempty (inst : ABCInstance V C k) (loads : V → ℚ)
+lemma seq_phragmen_find_best_candidate_supporters_nonempty (inst : ABCInstance V C k) (loads : V → ℚ)
     (already_selected : Finset C) (c : C) (s : ℚ)
-    (h : find_best_candidate inst loads already_selected = some (c, s)) :
+    (h : seq_phragmen_find_best_candidate inst loads already_selected = some (c, s)) :
     (inst.supporters c).Nonempty := by
   classical
-  unfold find_best_candidate at h
+  unfold seq_phragmen_find_best_candidate at h
   set available := (inst.candidates \ already_selected).sort (· ≤ ·) with havailable
   set candidates_with_s :=
     available.filterMap (fun c =>
@@ -437,12 +437,12 @@ lemma find_best_candidate_supporters_nonempty (inst : ABCInstance V C k) (loads 
     · simp [hpos] at ha_eq
 
 omit [LinearOrder V] in
-lemma find_best_candidate_value (inst : ABCInstance V C k) (loads : V → ℚ)
+lemma seq_phragmen_find_best_candidate_value (inst : ABCInstance V C k) (loads : V → ℚ)
     (already_selected : Finset C) (c : C) (s : ℚ)
-    (h : find_best_candidate inst loads already_selected = some (c, s)) :
+    (h : seq_phragmen_find_best_candidate inst loads already_selected = some (c, s)) :
     s = s_value_rat (compute_s_value inst loads c) := by
   classical
-  unfold find_best_candidate at h
+  unfold seq_phragmen_find_best_candidate at h
   set available := (inst.candidates \ already_selected).sort (· ≤ ·) with havailable
   set candidates_with_s :=
     available.filterMap (fun c =>
@@ -486,15 +486,15 @@ lemma find_best_candidate_value (inst : ABCInstance V C k) (loads : V → ℚ)
     · simp [hpos] at ha_eq
 
 omit [LinearOrder V] in
-lemma find_best_candidate_minimal (inst : ABCInstance V C k) (loads : V → ℚ)
+lemma seq_phragmen_find_best_candidate_minimal (inst : ABCInstance V C k) (loads : V → ℚ)
     (already_selected : Finset C) (c : C) (s : ℚ)
-    (h : find_best_candidate inst loads already_selected = some (c, s)) :
+    (h : seq_phragmen_find_best_candidate inst loads already_selected = some (c, s)) :
     ∀ c' ∈ inst.candidates \ already_selected,
       (inst.supporters c').Nonempty →
       s ≤ s_value_rat (compute_s_value inst loads c') := by
   classical
   intro c' hc' hsup
-  unfold find_best_candidate at h
+  unfold seq_phragmen_find_best_candidate at h
   set available := (inst.candidates \ already_selected).sort (· ≤ ·) with havailable
   set candidates_with_s :=
     available.filterMap (fun c =>
@@ -550,7 +550,7 @@ lemma find_best_candidate_minimal (inst : ABCInstance V C k) (loads : V → ℚ)
 omit [LinearOrder V] in
 def seq_phragmen_round_of_state (inst : ABCInstance V C k)
     (state : SeqPhragmenState V C k inst) (c : C) (s : ℚ)
-    (hbest : find_best_candidate inst state.loads state.selected = some (c, s))
+    (hbest : seq_phragmen_find_best_candidate inst state.loads state.selected = some (c, s))
     (hloads : ∀ v, 0 ≤ state.loads v)
     (hle : ∀ v ∈ inst.voters, state.loads v ≤ s) :
     SeqPhragmenRound V C inst := by
@@ -563,15 +563,15 @@ def seq_phragmen_round_of_state (inst : ABCInstance V C k)
       selected_s := s
       selected_in_candidates :=
         (Finset.mem_sdiff.mp
-          (find_best_candidate_mem inst state.loads state.selected c s hbest)).1
+          (seq_phragmen_find_best_candidate_mem inst state.loads state.selected c s hbest)).1
       selected_not_prior :=
         (Finset.mem_sdiff.mp
-          (find_best_candidate_mem inst state.loads state.selected c s hbest)).2
-      supporters_nonempty := find_best_candidate_supporters_nonempty inst state.loads state.selected c s hbest
+          (seq_phragmen_find_best_candidate_mem inst state.loads state.selected c s hbest)).2
+      supporters_nonempty := seq_phragmen_find_best_candidate_supporters_nonempty inst state.loads state.selected c s hbest
       selected_s_nonneg := by
-        have hsup := find_best_candidate_supporters_nonempty inst state.loads state.selected c s hbest
+        have hsup := seq_phragmen_find_best_candidate_supporters_nonempty inst state.loads state.selected c s hbest
         have hs : s = s_value_rat (compute_s_value inst state.loads c) :=
-          find_best_candidate_value inst state.loads state.selected c s hbest
+          seq_phragmen_find_best_candidate_value inst state.loads state.selected c s hbest
         have hpos : 0 < inst.s_value state.loads c hsup :=
           s_value_pos inst state.loads hloads c hsup
         have hs' :
@@ -579,9 +579,9 @@ def seq_phragmen_round_of_state (inst : ABCInstance V C k)
           simp [s_value, s_value_rat_eq inst state.loads c hsup, hs]
         exact le_of_lt (by simpa [hs'] using hpos)
       s_formula := by
-        have hsup := find_best_candidate_supporters_nonempty inst state.loads state.selected c s hbest
+        have hsup := seq_phragmen_find_best_candidate_supporters_nonempty inst state.loads state.selected c s hbest
         have hs : s = s_value_rat (compute_s_value inst state.loads c) :=
-          find_best_candidate_value inst state.loads state.selected c s hbest
+          seq_phragmen_find_best_candidate_value inst state.loads state.selected c s hbest
         have hcard : (inst.supporters c).card ≠ 0 := Finset.card_ne_zero.mpr hsup
         -- unfold using s_value_num
         calc
@@ -598,7 +598,7 @@ def seq_phragmen_round_of_state (inst : ABCInstance V C k)
       selected_minimal := by
         intro c' hc' hsup
         have hmin :=
-          find_best_candidate_minimal inst state.loads state.selected c s hbest c' hc' hsup
+          seq_phragmen_find_best_candidate_minimal inst state.loads state.selected c s hbest c' hc' hsup
         have hpos : (0 : ℚ) ≤ (inst.supporters c').card := by
           exact Nat.cast_nonneg _
         have hcard : (inst.supporters c').card ≠ 0 := Finset.card_ne_zero.mpr hsup
@@ -637,7 +637,7 @@ section WitnessConstruction
 structure StepData (inst : ABCInstance V C k) (state : SeqPhragmenState V C k inst) where
   c : C
   s : ℚ
-  hbest : find_best_candidate inst state.loads state.selected = some (c, s)
+  hbest : seq_phragmen_find_best_candidate inst state.loads state.selected = some (c, s)
   hloads : ∀ v, 0 ≤ state.loads v
   hle : ∀ v ∈ inst.voters, state.loads v ≤ s
   hrounds : state.rounds_remaining > 0
@@ -724,9 +724,9 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
           simpa using hn
         have hex :=
           (exists_candidate_with_supporters_of_plentiful inst ∅ hsubset hcard hpl)
-        rcases find_best_candidate_some_of_exists inst (fun _ => 0) ∅ hex with ⟨c, s, hbest⟩
+        rcases seq_phragmen_find_best_candidate_some_of_exists inst (fun _ => 0) ∅ hex with ⟨c, s, hbest⟩
         have hsup : (inst.supporters c).Nonempty :=
-          find_best_candidate_supporters_nonempty inst (fun _ => 0) ∅ c s hbest
+          seq_phragmen_find_best_candidate_supporters_nonempty inst (fun _ => 0) ∅ c s hbest
         have hloads : ∀ v, 0 ≤ (fun _ : V => (0 : ℚ)) v := by
           intro v
           simp
@@ -734,7 +734,7 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
           have hspos : 0 < inst.s_value (fun _ => 0) c hsup :=
             s_value_pos inst (fun _ => 0) hloads c hsup
           have hsrat : s = s_value_rat (compute_s_value inst (fun _ => 0) c) :=
-            find_best_candidate_value inst (fun _ => 0) ∅ c s hbest
+            seq_phragmen_find_best_candidate_value inst (fun _ => 0) ∅ c s hbest
           have hsval :
               s_value_rat (compute_s_value inst (fun _ => 0) c) =
                 inst.s_value (fun _ => 0) c hsup := by
@@ -753,8 +753,8 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
           · intro v hv
             simpa using hs_nonneg
           · simpa using hn
-        · simp [seq_phragmen_state_at, initial_state]
-        · simp [seq_phragmen_state_at, initial_state]
+        · simp [seq_phragmen_state_at, seq_phragmen_initial_state]
+        · simp [seq_phragmen_state_at, seq_phragmen_initial_state]
     | succ n ih =>
         have hn' : n < k := Nat.lt_of_succ_lt hn
         rcases ih hn' with ⟨step, hsubset, hcard, hrounds_eq⟩
@@ -768,12 +768,12 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
                 rounds_remaining := (seq_phragmen_state_at inst n).rounds_remaining - 1 } := by
           simpa [seq_phragmen_state_at, seq_phragmen_step, hbest, hne]
         have hmem :=
-          find_best_candidate_mem inst (seq_phragmen_state_at inst n).loads
+          seq_phragmen_find_best_candidate_mem inst (seq_phragmen_state_at inst n).loads
             (seq_phragmen_state_at inst n).selected c s hbest
         have hnot_mem : c ∉ (seq_phragmen_state_at inst n).selected :=
           (Finset.mem_sdiff.mp hmem).2
         have hsup : (inst.supporters c).Nonempty :=
-          find_best_candidate_supporters_nonempty inst
+          seq_phragmen_find_best_candidate_supporters_nonempty inst
             (seq_phragmen_state_at inst n).loads (seq_phragmen_state_at inst n).selected c s hbest
         have hloads' :
             ∀ v, 0 ≤
@@ -783,7 +783,7 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
               s_value_pos inst (seq_phragmen_state_at inst n).loads hloads c hsup
             have hsrat :
                 s = s_value_rat (compute_s_value inst (seq_phragmen_state_at inst n).loads c) :=
-              find_best_candidate_value inst (seq_phragmen_state_at inst n).loads
+              seq_phragmen_find_best_candidate_value inst (seq_phragmen_state_at inst n).loads
                 (seq_phragmen_state_at inst n).selected c s hbest
             have hsval :
                 s_value_rat (compute_s_value inst (seq_phragmen_state_at inst n).loads c) =
@@ -829,15 +829,15 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
         have hex :=
           exists_candidate_with_supporters_of_plentiful inst
             (seq_phragmen_state_at inst (n + 1)).selected hsubset' hcard_lt hpl
-        rcases find_best_candidate_some_of_exists inst
+        rcases seq_phragmen_find_best_candidate_some_of_exists inst
           (seq_phragmen_state_at inst (n + 1)).loads
           (seq_phragmen_state_at inst (n + 1)).selected hex with ⟨c', s', hbest'⟩
         have hsup' : (inst.supporters c').Nonempty :=
-          find_best_candidate_supporters_nonempty inst
+          seq_phragmen_find_best_candidate_supporters_nonempty inst
             (seq_phragmen_state_at inst (n + 1)).loads
             (seq_phragmen_state_at inst (n + 1)).selected c' s' hbest'
         have hmem' :=
-          find_best_candidate_mem inst (seq_phragmen_state_at inst (n + 1)).loads
+          seq_phragmen_find_best_candidate_mem inst (seq_phragmen_state_at inst (n + 1)).loads
             (seq_phragmen_state_at inst (n + 1)).selected c' s' hbest'
         have hmem'_cand : c' ∈ inst.candidates := (Finset.mem_sdiff.mp hmem').1
         have hmem'_not : c' ∉ (seq_phragmen_state_at inst (n + 1)).selected :=
@@ -862,7 +862,7 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
           have hmin :
               s ≤ s_value_rat
                 (compute_s_value inst (seq_phragmen_state_at inst n).loads c') :=
-            find_best_candidate_minimal inst (seq_phragmen_state_at inst n).loads
+            seq_phragmen_find_best_candidate_minimal inst (seq_phragmen_state_at inst n).loads
               (seq_phragmen_state_at inst n).selected c s hbest c' hc' hsup'
           have hsum :
               ∑ i ∈ inst.supporters c', (seq_phragmen_state_at inst n).loads i ≤
@@ -895,7 +895,7 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
           have hs' :
               s' = s_value_rat (compute_s_value inst
                 (seq_phragmen_state_at inst (n + 1)).loads c') :=
-            find_best_candidate_value inst (seq_phragmen_state_at inst (n + 1)).loads
+            seq_phragmen_find_best_candidate_value inst (seq_phragmen_state_at inst (n + 1)).loads
               (seq_phragmen_state_at inst (n + 1)).selected c' s' hbest'
           calc
             s ≤ s_value_rat (compute_s_value inst (seq_phragmen_state_at inst n).loads c') := hmin
@@ -1012,7 +1012,7 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
       (seq_phragmen_state_at inst k).selected.card = k := by
     by_cases hk : k = 0
     · subst hk
-      simp [seq_phragmen_state_at, initial_state]
+      simp [seq_phragmen_state_at, seq_phragmen_initial_state]
     · have hkpos : k > 0 := Nat.pos_of_ne_zero hk
       have hk' : k - 1 < k := Nat.sub_lt hkpos Nat.one_pos
       have hspec := Classical.choose_spec (hsteps' (k - 1) hk')
@@ -1032,7 +1032,7 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
           _ = (seq_phragmen_state_at inst (k - 1)).selected ∪ {c} := by
                 simp [seq_phragmen_state_at, seq_phragmen_step, hbest, hne]
       have hmem :=
-        find_best_candidate_mem inst (seq_phragmen_state_at inst (k - 1)).loads
+        seq_phragmen_find_best_candidate_mem inst (seq_phragmen_state_at inst (k - 1)).loads
           (seq_phragmen_state_at inst (k - 1)).selected c s hbest
       have hnot_mem : c ∉ (seq_phragmen_state_at inst (k - 1)).selected :=
         (Finset.mem_sdiff.mp hmem).2
@@ -1064,7 +1064,7 @@ theorem seq_phragmen_algorithm_is_outcome_of_plentiful (inst : ABCInstance V C k
     simpa [hcommittee_card, hfinal_card]
   simpa [hcommittee_eq, seq_phragmen_algorithm]
 
--- TODO: Once `find_best_candidate_some_of_exists` is proved, finish:
+-- TODO: Once `seq_phragmen_find_best_candidate_some_of_exists` is proved, finish:
 -- - `seq_phragmen_stepdata_exists_of_plentiful`
 -- - `seq_phragmen_algorithm_is_outcome_of_plentiful`
 
