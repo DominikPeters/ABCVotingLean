@@ -98,6 +98,33 @@ theorem core_implies_disjoint_core (inst : ABCInstance V C k) (W : Finset C) :
   exact h_core S T l h_S_subset h_T_subset hl_pos h_cond
 
 /--
+Core implies Sub-core: If W is in the core, then W is in the sub-core.
+
+The sub-core only prevents deviations where every voter strictly improves
+(W ∩ A_i ⊊ T ∩ A_i for all i ∈ S), which is weaker than the core's requirement
+that some voter has utility at least as high in W as in T.
+
+Reference: "Auditing for Core Stability in Participatory Budgeting"
+by Munagala, Shen, Wang (WINE 2022)
+-/
+theorem core_implies_sub_core (inst : ABCInstance V C k) (W : Finset C) :
+    inst.is_in_core W → inst.is_in_sub_core W := by
+  intro h_core S T h_S_subset h_T_subset h_S_nonempty h_size_cond
+  by_cases hT_empty : T = ∅
+  · -- T is empty: T ∩ A_i = ∅, and nothing is a proper subset of ∅
+    obtain ⟨i, hi⟩ := h_S_nonempty
+    exact ⟨i, hi, by
+      simpa [hT_empty] using (Finset.not_ssubset_empty (W ∩ inst.approves i))⟩
+  · -- T is nonempty: use the core with l = T.card
+    have hT_card_pos : T.card ≥ 1 :=
+      Finset.one_le_card.mpr (Finset.nonempty_iff_ne_empty.mpr hT_empty)
+    have h_l_large : inst.is_l_large S T.card := h_size_cond
+    obtain ⟨i, hi, h_card_ge⟩ := h_core S T T.card h_S_subset h_T_subset hT_card_pos
+      ⟨h_l_large, le_refl _⟩
+    -- If |W ∩ A_i| ≥ |T ∩ A_i|, then ¬(W ∩ A_i ⊊ T ∩ A_i)
+    exact ⟨i, hi, fun h_ssubset => (Finset.card_lt_card h_ssubset).not_ge h_card_ge⟩
+
+/--
 Core implies FJR: If u_i(W) ≥ u_i(T) for some voter, and all voters have u_i(T) ≥ β,
 then that voter has u_i(W) ≥ β.
 -/
@@ -511,5 +538,459 @@ theorem priceable_implies_pjr (inst : ABCInstance V C k) (W : Finset C)
   have h_pjr_plus : inst.is_pjr_plus W :=
     priceable_implies_pjr_plus inst W hW_card hW_sub h_priceable
   exact pjr_plus_implies_pjr inst W h_pjr_plus
+
+-- ============================================================================
+-- LINDAHL AND WEAK PRICEABILITY RELATIONSHIPS
+-- ============================================================================
+
+/--
+Lindahl priceability implies weak priceability: the same price system works.
+
+**Proof sketch:** Given d ∈ A_i \ W, take T = {d} ∪ (A_i ∩ W). Since d ∉ W,
+we have |A_i ∩ T| = 1 + |A_i ∩ W| > |A_i ∩ W|. By Lindahl exhaustiveness,
+Σ_{c ∈ T} p i c > 1, which equals p i d + Σ_{c ∈ A_i ∩ W} p i c.
+-/
+theorem lindahl_priceable_implies_weakly_priceable (inst : ABCInstance V C k) (W : Finset C)
+    (hW_sub : W ⊆ inst.candidates) :
+    inst.is_lindahl_priceable W → inst.is_weakly_priceable W := by
+  intro ⟨p, h_nonneg, h_bounded, h_lindahl⟩
+  refine ⟨p, h_nonneg, h_bounded, ?_⟩
+  -- Show weak exhaustiveness
+  intro i hi d hd
+  -- d ∈ (A_i ∩ candidates) \ W
+  simp only [mem_sdiff, mem_inter] at hd
+  obtain ⟨⟨hd_app, hd_cand⟩, hd_notW⟩ := hd
+  -- Take T = {d} ∪ (A_i ∩ W)
+  set T := {d} ∪ (inst.approves i ∩ W) with hT_def
+  have hT_sub : T ⊆ inst.candidates := by
+    intro c hc
+    rw [hT_def] at hc
+    simp only [mem_union, mem_singleton, mem_inter] at hc
+    rcases hc with rfl | ⟨_, hcW⟩
+    · exact hd_cand
+    · exact hW_sub hcW
+  -- |A_i ∩ T| = 1 + |A_i ∩ W|
+  have hd_not_in : d ∉ inst.approves i ∩ W := by
+    simp only [mem_inter, not_and]
+    intro _; exact hd_notW
+  have h1 : inst.approves i ∩ T = {d} ∪ (inst.approves i ∩ W) := by
+    rw [hT_def]
+    ext c
+    simp only [mem_inter, mem_union, mem_singleton]
+    constructor
+    · intro ⟨hc_app, hc_T⟩
+      rcases hc_T with rfl | ⟨hc_app', hcW⟩
+      · left; rfl
+      · right; exact ⟨hc_app', hcW⟩
+    · intro hc
+      rcases hc with rfl | ⟨hc_app, hcW⟩
+      · exact ⟨hd_app, Or.inl rfl⟩
+      · exact ⟨hc_app, Or.inr ⟨hc_app, hcW⟩⟩
+  have hT_card : (inst.approves i ∩ T).card = (inst.approves i ∩ W).card + 1 := by
+    rw [h1, card_union_of_disjoint (disjoint_singleton_left.mpr hd_not_in), card_singleton]
+    ring
+  -- Apply Lindahl exhaustiveness
+  have h_gt : (inst.approves i ∩ T).card > (inst.approves i ∩ W).card := by omega
+  have h_sum : ∑ c ∈ T, p i c > 1 := h_lindahl i hi T hT_sub h_gt
+  -- The sum over T equals p i d + sum over A_i ∩ W
+  have h_sum_eq : ∑ c ∈ T, p i c = p i d + ∑ c ∈ inst.approves i ∩ W, p i c := by
+    rw [hT_def, sum_union (disjoint_singleton_left.mpr hd_not_in), sum_singleton]
+  linarith
+
+/--
+Priceability (Peters-Skowron) implies weak priceability (Munagala et al.).
+Proof from "On the Edge of Core (Non-)Emptiness: An Automated
+Reasoning Approach to Approval-Based Multi-Winner Voting", Appendix E.1
+Ratip Emin Berker, Emanuel Tewolde, Vincent Conitzer, Mingyu Guo, Marijn Heule, and Lirong Xia
+https://arxiv.org/pdf/2512.16895
+
+**Proof sketch:**
+Given (b, p) satisfying priceability, construct q as:
+- q i c = p i c / b for c ∈ W
+- q i c = unspent_i / b + ε for c ∈ A_i ∩ C \ W, where ε > 0 is small
+- q i c = 0 otherwise
+
+Key facts:
+1. Total payment = k, total budget = n·b, so k ≤ n·b (i.e., 1/b ≤ n/k)
+2. By exhaustiveness: Σ_{i: c ∈ A_i} unspent_i ≤ 1 for c ∉ W
+
+For c ∈ W: Σ_i q i c = 1/b ≤ n/k ✓
+For c ∉ W: Σ_i q i c ≤ 1/b + n·ε, choose ε small enough that this ≤ n/k
+
+For weak exhaustiveness:
+q i d + Σ_{c ∈ A_i ∩ W} q i c = unspent/b + ε + spending/b = 1 + ε > 1 ✓
+-/
+theorem priceable_implies_weakly_priceable (inst : ABCInstance V C k) (W : Finset C)
+    (hW_card : W.card = k) (hW_sub : W ⊆ inst.candidates) :
+    inst.is_priceable W → inst.is_weakly_priceable W := by
+  intro ⟨b, p, hb_nonneg, hvalid, hexhaust⟩
+  -- b > 0 (since each elected candidate gets total payment 1, and W is nonempty)
+  have hb_pos : 0 < b := by
+    by_contra hb_le
+    push_neg at hb_le
+    have hb_eq : b = 0 := le_antisymm hb_le hb_nonneg
+    -- If b = 0, all spending is 0
+    have h_spend_zero : ∀ i ∈ inst.voters, p.spending inst i = 0 := by
+      intro i hi
+      have h_spend_le : p.spending inst i ≤ b := hvalid.2.2.1 i hi
+      rw [hb_eq] at h_spend_le
+      have h_nonneg : 0 ≤ p.spending inst i := Finset.sum_nonneg (fun c _ => hvalid.1 i hi c)
+      linarith
+    -- So each p i c = 0 for c ∈ candidates
+    have h_zero_cand : ∀ i ∈ inst.voters, ∀ c ∈ inst.candidates, p i c = 0 := by
+      intro i hi c hc
+      have h_le : p i c ≤ p.spending inst i := Finset.single_le_sum (fun c _ => hvalid.1 i hi c) hc
+      have h_nonneg : 0 ≤ p i c := hvalid.1 i hi c
+      linarith [h_spend_zero i hi]
+    -- But W ⊆ candidates and elected_paid_one says Σ_i p i c = 1 for c ∈ W
+    obtain ⟨c, hc⟩ := Finset.card_pos.mp (hW_card.symm ▸ inst.k_pos)
+    have h_one : p.total_payment inst c = 1 := hvalid.2.2.2.1 c hc
+    have h_zero : p.total_payment inst c = 0 := by
+      apply Finset.sum_eq_zero
+      intro i hi
+      exact h_zero_cand i hi c (hW_sub hc)
+    linarith
+  -- Key bound: k ≤ n·b
+  have hk_le_nb : (k : ℝ) ≤ inst.voters.card * b := by
+    calc (k : ℝ) = ∑ c ∈ W, p.total_payment inst c := by
+            rw [p.total_elected_payment inst W b hvalid, hW_card]
+      _ = ∑ c ∈ W, ∑ i ∈ inst.voters, p i c := rfl
+      _ = ∑ i ∈ inst.voters, ∑ c ∈ W, p i c := Finset.sum_comm
+      _ ≤ ∑ i ∈ inst.voters, p.spending inst i := by
+          apply Finset.sum_le_sum; intro i hi
+          apply Finset.sum_le_sum_of_subset_of_nonneg (fun c hc => hW_sub hc)
+          intro c _ _; exact hvalid.1 i hi c
+      _ ≤ ∑ i ∈ inst.voters, b := by
+          apply Finset.sum_le_sum; intro i hi; exact hvalid.2.2.1 i hi
+      _ = inst.voters.card * b := by simp [Finset.sum_const]
+  -- Therefore 1/b ≤ n/k
+  have hk_pos : (0 : ℝ) < k := Nat.cast_pos.mpr inst.k_pos
+  have hn_pos : (0 : ℝ) < inst.voters.card := Nat.cast_pos.mpr (Finset.card_pos.mpr inst.voters_nonempty)
+  have h_inv_b_le : 1 / b ≤ inst.voters.card / k := by
+    have hb_ne : b ≠ 0 := ne_of_gt hb_pos
+    have hk_ne : (k : ℝ) ≠ 0 := ne_of_gt hk_pos
+    field_simp [hb_ne, hk_ne]
+    have hk_le_nb' : (k : ℝ) ≤ b * inst.voters.card := by
+      simpa [mul_comm] using hk_le_nb
+    exact hk_le_nb'
+  -- Choose ε > 0 small enough
+  -- If n/k > 1/b, use ε = (n/k - 1/b) / (2n)
+  -- If n/k = 1/b, use ε = 1/(2k) (and everyone's unspent is 0)
+  set δ : ℝ := inst.voters.card / k - 1 / b with hδ_def
+  have hδ_nonneg : 0 ≤ δ := by linarith
+  set ε : ℝ := if δ > 0 then δ / (2 * inst.voters.card) else 1 / (2 * k) with hε_def
+  have hε_pos : 0 < ε := by
+    rw [hε_def]
+    split_ifs with hδ_pos
+    · exact div_pos hδ_pos (by linarith)
+    · exact div_pos (by linarith : (0 : ℝ) < 1) (by linarith)
+  -- Construct the new price system q
+  set q : PriceSystem V C := fun i c =>
+    if c ∈ W then p i c / b
+    else if c ∈ inst.approves i ∩ inst.candidates then
+      p.unspent inst b i / b + ε
+    else 0 with hq_def
+  use q
+  constructor
+  -- (1) q is non-negative
+  · intro i hi c
+    by_cases hcW : c ∈ W
+    · have h_pc_nonneg : 0 ≤ p i c := hvalid.1 i hi c
+      have h_div_nonneg : 0 ≤ p i c / b := div_nonneg h_pc_nonneg (le_of_lt hb_pos)
+      simpa [hq_def, hcW] using h_div_nonneg
+    · by_cases hcA : c ∈ inst.approves i ∩ inst.candidates
+      · have h_unspent_nonneg : 0 ≤ p.unspent inst b i := by
+          simp [PriceSystem.unspent]
+          linarith [hvalid.2.2.1 i hi]
+        have h_div_nonneg : 0 ≤ p.unspent inst b i / b :=
+          div_nonneg h_unspent_nonneg (le_of_lt hb_pos)
+        have h_add_nonneg : 0 ≤ p.unspent inst b i / b + ε :=
+          add_nonneg h_div_nonneg (le_of_lt hε_pos)
+        have hcA' : c ∈ inst.approves i ∧ c ∈ inst.candidates := by
+          simpa [mem_inter] using hcA
+        simpa [hq_def, hcW, hcA, hcA'] using h_add_nonneg
+      · have hcA' : ¬ (c ∈ inst.approves i ∧ c ∈ inst.candidates) := by
+          intro h
+          exact hcA (by simpa [mem_inter] using h)
+        simp [hq_def, hcW, hcA']
+  constructor
+  -- (2) Total payment bounded by n/k
+  · intro c hc
+    simp only [PriceSystem.total_payment]
+    by_cases hcW : c ∈ W
+    · -- c ∈ W: sum = (1/b) · Σ p i c = 1/b ≤ n/k
+      have h_simp : ∀ i, q i c = p i c / b := fun i => by simp only [hq_def, hcW, ↓reduceIte]
+      simp only [h_simp]
+      calc ∑ i ∈ inst.voters, p i c / b
+          = (∑ i ∈ inst.voters, p i c) / b := by
+            have h := (Finset.sum_div (s := inst.voters) (f := fun i => p i c) b)
+            simpa using h.symm
+        _ = p.total_payment inst c / b := rfl
+        _ = 1 / b := by rw [hvalid.2.2.2.1 c hcW]
+        _ ≤ inst.voters.card / k := h_inv_b_le
+    · -- c ∉ W: more complex
+      have h_simp : ∀ i, q i c = if c ∈ inst.approves i then p.unspent inst b i / b + ε else 0 := by
+        intro i
+        simp only [hq_def, hcW, ↓reduceIte, mem_inter, hc, and_true]
+      simp only [h_simp]
+      rw [← Finset.sum_filter]
+      -- The filter is exactly supporters
+      have h_filter_eq : inst.voters.filter (c ∈ inst.approves ·) = inst.supporters c := rfl
+      rw [h_filter_eq]
+      -- Split into unspent part and ε part
+      have h_sum_split : ∑ i ∈ inst.supporters c, (p.unspent inst b i / b + ε) =
+          (∑ i ∈ inst.supporters c, p.unspent inst b i) / b + (inst.supporters c).card * ε := by
+        calc
+          ∑ i ∈ inst.supporters c, (p.unspent inst b i / b + ε)
+              = ∑ i ∈ inst.supporters c, p.unspent inst b i / b +
+                  ∑ i ∈ inst.supporters c, ε := Finset.sum_add_distrib
+          _ = (∑ i ∈ inst.supporters c, p.unspent inst b i) / b +
+                  (inst.supporters c).card * ε := by
+                simp [Finset.sum_div, Finset.sum_const]
+      rw [h_sum_split]
+      -- By exhaustiveness: Σ unspent ≤ 1
+      have h_exhaust : ∑ i ∈ inst.supporters c, p.unspent inst b i ≤ 1 :=
+        hexhaust c (mem_sdiff.mpr ⟨hc, hcW⟩)
+      -- Number of supporters ≤ n
+      have h_supp_le : (inst.supporters c).card ≤ inst.voters.card :=
+        Finset.card_le_card (fun i hi => (mem_filter.mp hi).1)
+      -- Now bound the total
+      by_cases hδ_pos : δ > 0
+      · -- δ > 0 case: reuse coarse bound and simplify
+        have hε_val : ε = δ / (2 * inst.voters.card) := by simp [hε_def, hδ_pos]
+        have h_bound : (∑ i ∈ inst.supporters c, p.unspent inst b i) / b +
+            (inst.supporters c).card * ε ≤ 1 / b + inst.voters.card * ε := by
+          apply add_le_add
+          · exact div_le_div_of_nonneg_right h_exhaust (le_of_lt hb_pos)
+          · exact mul_le_mul_of_nonneg_right (Nat.cast_le.mpr h_supp_le) (le_of_lt hε_pos)
+        have h_simpl : inst.voters.card * (δ / (2 * inst.voters.card)) = δ / 2 := by
+          have hn_ne : (inst.voters.card : ℝ) ≠ 0 := ne_of_gt hn_pos
+          field_simp [hn_ne]
+        calc (∑ i ∈ inst.supporters c, p.unspent inst b i) / b + (inst.supporters c).card * ε
+            ≤ 1 / b + inst.voters.card * ε := h_bound
+          _ = 1 / b + δ / 2 := by simpa [hε_val, h_simpl]
+          _ ≤ inst.voters.card / k := by
+            have hδ_nonneg' : 0 ≤ δ := hδ_nonneg
+            have h_half_le : δ / 2 ≤ δ := by nlinarith
+            calc 1 / b + δ / 2 ≤ 1 / b + δ := add_le_add_left h_half_le _
+            _ = inst.voters.card / k := by rw [hδ_def]; ring
+      · -- δ = 0 case: all voters spend exactly b, so unspent is 0
+        have hδ_eq : δ = 0 := le_antisymm (le_of_not_gt hδ_pos) hδ_nonneg
+        have hε_val : ε = 1 / (2 * k) := by simp [hε_def, hδ_eq]
+        -- Each voter must spend b (otherwise total spending < n·b contradicting k = n·b)
+        have h_all_spend_b : ∀ i ∈ inst.voters, p.spending inst i = b := by
+          intro i hi
+          have hle : p.spending inst i ≤ b := hvalid.2.2.1 i hi
+          have hge : p.spending inst i ≥ b := by
+            by_contra hlt; push_neg at hlt
+            have h_strict : ∑ j ∈ inst.voters, p.spending inst j < inst.voters.card * b := by
+              calc ∑ j ∈ inst.voters, p.spending inst j
+                  = p.spending inst i + ∑ j ∈ inst.voters.erase i, p.spending inst j := by
+                      rw [Finset.add_sum_erase _ _ hi]
+                _ < b + ∑ j ∈ inst.voters.erase i, b := by
+                      apply add_lt_add_of_lt_of_le hlt
+                      apply Finset.sum_le_sum
+                      intro j hj; exact hvalid.2.2.1 j (Finset.mem_of_mem_erase hj)
+                _ = b + ((inst.voters.card : ℝ) - 1) * b := by
+                      simp [Finset.sum_const, Finset.card_erase_of_mem hi, nsmul_eq_mul]
+                      have hcard : 1 ≤ inst.voters.card := Finset.card_pos.mpr inst.voters_nonempty
+                      simp [Nat.cast_sub hcard]
+                _ = inst.voters.card * b := by ring
+            have h_payment_le : (k : ℝ) ≤ ∑ j ∈ inst.voters, p.spending inst j := by
+              calc (k : ℝ) = ∑ c' ∈ W, p.total_payment inst c' := by
+                      rw [p.total_elected_payment inst W b hvalid, hW_card]
+                _ = ∑ c' ∈ W, ∑ j ∈ inst.voters, p j c' := rfl
+                _ = ∑ j ∈ inst.voters, ∑ c' ∈ W, p j c' := Finset.sum_comm
+                _ ≤ ∑ j ∈ inst.voters, p.spending inst j := by
+                    apply Finset.sum_le_sum; intro j hj
+                    apply Finset.sum_le_sum_of_subset_of_nonneg (fun c' hc' => hW_sub hc')
+                    intro c' _ _; exact hvalid.1 j hj c'
+            have hk_lt : (k : ℝ) < inst.voters.card * b := by linarith
+            have hδ_alt : δ = (inst.voters.card * b - k) / (k * b) := by
+              have hb_ne : b ≠ 0 := hb_pos.ne'
+              have hk_ne : (k : ℝ) ≠ 0 := hk_pos.ne'
+              calc
+                δ = (inst.voters.card : ℝ) / k - 1 / b := hδ_def
+                _ = ((inst.voters.card : ℝ) * b - k) / (k * b) := by
+                  field_simp [hb_ne, hk_ne]
+            have hnum_pos : inst.voters.card * b - k > 0 := by linarith
+            have hden_pos : 0 < k * b := mul_pos hk_pos hb_pos
+            have hδ_pos' : δ > 0 := by
+              have : (inst.voters.card * b - k) / (k * b) > 0 := div_pos hnum_pos hden_pos
+              simpa [hδ_alt, mul_comm] using this
+            linarith
+          linarith
+        have h_unspent_zero : ∀ i ∈ inst.voters, p.unspent inst b i = 0 := by
+          intro i hi
+          simp [PriceSystem.unspent, h_all_spend_b i hi]
+        have h_sum_zero : ∑ i ∈ inst.supporters c, p.unspent inst b i = 0 :=
+          Finset.sum_eq_zero (fun i hi => h_unspent_zero i ((mem_filter.mp hi).1))
+        have h_lhs : (∑ i ∈ inst.supporters c, p.unspent inst b i) / b +
+            (inst.supporters c).card * ε = (inst.supporters c).card * ε := by
+          simp [h_sum_zero]
+        have h_bound : (inst.supporters c).card * ε ≤ inst.voters.card / k := by
+          calc (inst.supporters c).card * ε
+              = (inst.supporters c).card * (1 / (2 * k)) := by simp [hε_val]
+          _ ≤ inst.voters.card * (1 / (2 * k)) := by
+              apply mul_le_mul_of_nonneg_right (Nat.cast_le.mpr h_supp_le)
+              linarith
+          _ = inst.voters.card / (2 * k) := by ring
+          _ ≤ inst.voters.card / k := by
+              have hk_ne : (k : ℝ) ≠ 0 := hk_pos.ne'
+              have h_rewrite : inst.voters.card / (2 * k) = (inst.voters.card : ℝ) / k / 2 := by
+                field_simp [hk_ne]
+              have h_nonneg : 0 ≤ (inst.voters.card : ℝ) / k := by
+                have hnum_nonneg : 0 ≤ (inst.voters.card : ℝ) := Nat.cast_nonneg _
+                exact div_nonneg hnum_nonneg (le_of_lt hk_pos)
+              calc inst.voters.card / (2 * k)
+                  = (inst.voters.card : ℝ) / k / 2 := h_rewrite
+                _ ≤ (inst.voters.card : ℝ) / k := by nlinarith
+        have h_goal : (∑ i ∈ inst.supporters c, p.unspent inst b i) / b +
+            (inst.supporters c).card * ε ≤ inst.voters.card / k := by
+          linarith [h_lhs, h_bound]
+        exact h_goal
+  -- (3) Weak exhaustiveness
+  · intro i hi d hd
+    simp only [mem_sdiff, mem_inter] at hd
+    obtain ⟨⟨hd_app, hd_cand⟩, hd_notW⟩ := hd
+    -- q i d = unspent/b + ε
+    have hq_d : q i d = p.unspent inst b i / b + ε := by
+      simp only [hq_def, hd_notW, ↓reduceIte, mem_inter, hd_app, hd_cand, and_self]
+    rw [hq_d]
+    -- Σ_{c ∈ A_i ∩ W} q i c = Σ p i c / b
+    have h_sum_W : ∑ c ∈ inst.approves i ∩ W, q i c = (∑ c ∈ inst.approves i ∩ W, p i c) / b := by
+      rw [Finset.sum_div]
+      apply Finset.sum_congr rfl
+      intro c hc
+      simp only [hq_def, (mem_inter.mp hc).2, ↓reduceIte]
+    rw [h_sum_W]
+    -- spending on W = total spending for valid p (non-elected get 0 payment)
+    have h_spending_eq : ∑ c ∈ inst.approves i ∩ W, p i c = p.spending inst i := by
+      have h_valid_spending := p.spending_eq_elected_approved inst W b hvalid hW_sub i hi
+      rw [h_valid_spending]
+      apply Finset.sum_congr _ (fun _ _ => rfl)
+      ext c; simp only [mem_inter, and_comm]
+    rw [h_spending_eq]
+    -- unspent + spending = b
+    have h_sum_eq : p.unspent inst b i + p.spending inst i = b := by
+      simp only [PriceSystem.unspent]; ring
+    calc p.unspent inst b i / b + ε + p.spending inst i / b
+        = (p.unspent inst b i + p.spending inst i) / b + ε := by ring
+      _ = b / b + ε := by rw [h_sum_eq]
+      _ = 1 + ε := by rw [div_self (ne_of_gt hb_pos)]
+      _ > 1 := by linarith
+
+-- ============================================================================
+-- WEAK PRICEABILITY IMPLIES SUB-CORE
+-- ============================================================================
+
+/--
+Weak priceability implies sub-core: If a committee is weakly priceable, it lies in the sub-core.
+
+**Proof sketch** (following Munagala-Shen-Wang):
+Suppose W is weakly priceable but not in the sub-core. Then there exist S, T with
+|T| ≤ |S|·k/n such that ∀ i ∈ S, A_i ∩ W ⊊ A_i ∩ T.
+
+For each i ∈ S, pick d_i ∈ (A_i ∩ T) \ (A_i ∩ W). By weak exhaustiveness:
+  p_i(d_i) + Σ_{c ∈ A_i ∩ W} p_i(c) > 1
+
+Since {d_i} ∪ (A_i ∩ W) ⊆ T, we have Σ_{c ∈ T} p_i(c) > 1 for all i ∈ S.
+
+Summing over S and using the total payment bound:
+  |T| · (n/k) ≥ Σ_{c ∈ T} Σ_i p_i(c) ≥ Σ_{i ∈ S} Σ_{c ∈ T} p_i(c) > |S|
+
+This contradicts |T| ≤ |S|·k/n.
+
+Reference: "Auditing for Core Stability in Participatory Budgeting"
+by Munagala, Shen, Wang (WINE 2022), Proposition 7.3
+-/
+theorem weakly_priceable_implies_sub_core (inst : ABCInstance V C k) (W : Finset C) :
+    inst.is_weakly_priceable W → inst.is_in_sub_core W := by
+  intro ⟨p, h_nonneg, h_bounded, h_exhaust⟩
+         S T h_S_sub h_T_sub h_S_nonempty h_size
+  -- Prove by contradiction: assume all voters in S strictly prefer T to W
+  by_contra h_all_prefer
+  push_neg at h_all_prefer
+  -- h_all_prefer : ∀ i ∈ S, W ∩ inst.approves i ⊂ T ∩ inst.approves i
+
+  -- For each i ∈ S, the payment sum over T is > 1
+  have h_each_gt_one : ∀ i ∈ S, ∑ c ∈ T, p i c > 1 := by
+    intro i hi
+    have h_prefer := h_all_prefer i hi
+    -- W ∩ A_i ⊊ T ∩ A_i means there exists d ∈ (T ∩ A_i) \ (W ∩ A_i)
+    obtain ⟨d, hd_in, hd_not⟩ := Finset.exists_of_ssubset h_prefer
+    simp only [mem_inter] at hd_in
+    have hd_T : d ∈ T := hd_in.1
+    have hd_app : d ∈ inst.approves i := hd_in.2
+    have hd_not_W : d ∉ W := fun hd_W => hd_not (mem_inter.mpr ⟨hd_W, hd_app⟩)
+    -- d ∈ (A_i ∩ candidates) \ W, so weak exhaustiveness applies
+    have hd_sdiff : d ∈ (inst.approves i ∩ inst.candidates) \ W :=
+      mem_sdiff.mpr ⟨mem_inter.mpr ⟨hd_app, h_T_sub hd_T⟩, hd_not_W⟩
+    have h_exhaust_i := h_exhaust i (h_S_sub hi) d hd_sdiff
+    -- {d} ∪ (A_i ∩ W) ⊆ T
+    have h_subset : {d} ∪ (inst.approves i ∩ W) ⊆ T := by
+      intro c hc
+      simp only [mem_union, mem_singleton, mem_inter] at hc
+      rcases hc with rfl | ⟨hc_app, hc_W⟩
+      · exact hd_T
+      · -- W ∩ A_i ⊆ T ∩ A_i (from ssubset)
+        have h_sub := (Finset.ssubset_iff_subset_ne.mp h_prefer).1
+        exact (mem_inter.mp (h_sub (mem_inter.mpr ⟨hc_W, hc_app⟩))).1
+    have h_disjoint : Disjoint ({d} : Finset C) (inst.approves i ∩ W) :=
+      disjoint_singleton_left.mpr (fun h => hd_not_W (mem_inter.mp h).2)
+    calc ∑ c ∈ T, p i c
+        ≥ ∑ c ∈ {d} ∪ (inst.approves i ∩ W), p i c :=
+          Finset.sum_le_sum_of_subset_of_nonneg h_subset
+            (fun c _ _ => h_nonneg i (h_S_sub hi) c)
+      _ = p i d + ∑ c ∈ inst.approves i ∩ W, p i c := by
+          rw [sum_union h_disjoint, sum_singleton]
+      _ > 1 := h_exhaust_i
+
+  -- Sum over S is > |S|
+  have h_sum_S_gt : ∑ i ∈ S, ∑ c ∈ T, p i c > S.card := by
+    calc ∑ i ∈ S, ∑ c ∈ T, p i c
+        > ∑ _ ∈ S, (1 : ℝ) := by
+          apply Finset.sum_lt_sum
+          · intro i hi; exact le_of_lt (h_each_gt_one i hi)
+          · obtain ⟨i, hi⟩ := h_S_nonempty
+            exact ⟨i, hi, h_each_gt_one i hi⟩
+      _ = S.card := by simp
+
+  -- Total payment bound: Σ_{c∈T} total_payment(c) ≤ |T| · n/k
+  have h_total_bound : ∑ c ∈ T, p.total_payment inst c ≤ T.card * (inst.voters.card / k) := by
+    calc ∑ c ∈ T, p.total_payment inst c
+        ≤ ∑ c ∈ T, (inst.voters.card / k : ℝ) :=
+          Finset.sum_le_sum (fun c hc => h_bounded c (h_T_sub hc))
+      _ = T.card * (inst.voters.card / k) := by simp [Finset.sum_const]
+
+  have h_sum_comm : ∑ c ∈ T, p.total_payment inst c = ∑ i ∈ inst.voters, ∑ c ∈ T, p i c := by
+    simp only [PriceSystem.total_payment]; exact Finset.sum_comm
+
+  have h_sum_S_le : ∑ i ∈ S, ∑ c ∈ T, p i c ≤ ∑ i ∈ inst.voters, ∑ c ∈ T, p i c :=
+    Finset.sum_le_sum_of_subset_of_nonneg h_S_sub
+      (fun i hi _ => Finset.sum_nonneg (fun c _ => h_nonneg i hi c))
+
+  -- Chain: |T| · n/k ≥ Σ total_payment = Σ_voters Σ_T ≥ Σ_S Σ_T > |S|
+  have hk_pos : (0 : ℝ) < k := Nat.cast_pos.mpr inst.k_pos
+  have h_chain : (T.card : ℝ) * (inst.voters.card / k : ℝ) > (S.card : ℝ) := by
+    calc (T.card : ℝ) * (inst.voters.card / k : ℝ)
+        ≥ ∑ c ∈ T, p.total_payment inst c := h_total_bound
+      _ = ∑ i ∈ inst.voters, ∑ c ∈ T, p i c := h_sum_comm
+      _ ≥ ∑ i ∈ S, ∑ c ∈ T, p i c := h_sum_S_le
+      _ > S.card := h_sum_S_gt
+
+  -- This gives T.card * voters.card > S.card * k
+  -- But h_size says T.card * voters.card ≤ S.card * k - Contradiction!
+  have h_size' : (T.card : ℝ) * inst.voters.card ≤ (S.card : ℝ) * k := by
+    exact_mod_cast h_size
+  have h_contra : (T.card : ℝ) * inst.voters.card > (S.card : ℝ) * k := by
+    have h_mul := mul_lt_mul_of_pos_right h_chain hk_pos
+    -- (T.card)*(voters/k)*k simplifies to (T.card)*voters
+    have hk_ne : (k : ℝ) ≠ 0 := ne_of_gt hk_pos
+    have h_simpl : (T.card : ℝ) * (inst.voters.card / k : ℝ) * k = (T.card : ℝ) * inst.voters.card := by
+      field_simp [hk_ne]
+    simpa [h_simpl] using h_mul
+
+  linarith [h_contra, h_size']
 
 end ABCInstance

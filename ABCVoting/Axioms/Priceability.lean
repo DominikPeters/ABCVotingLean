@@ -187,4 +187,60 @@ lemma PriceSystem.total_payment_eq_supporters (p : PriceSystem V C)
     exact happr i hi.1 c hi.2
   rw [h, add_zero]
 
+-- ============================================================================
+-- LINDAHL AND WEAK PRICEABILITY
+-- ============================================================================
+
+/--
+A price system satisfies the Lindahl/weak priceability total payment bound:
+the total payment to each candidate is at most n/k.
+-/
+def PriceSystem.total_payment_bounded (p : PriceSystem V C) (inst : ABCInstance V C k) : Prop :=
+  ∀ c ∈ inst.candidates, p.total_payment inst c ≤ inst.voters.card / k
+
+/--
+Lindahl priceability exhaustiveness (Munagala et al.): for every voter i and
+every alternative set T, if T gives i strictly more approved candidates than W,
+then i's total price for T exceeds 1.
+-/
+def PriceSystem.lindahl_exhaustive (p : PriceSystem V C) (inst : ABCInstance V C k)
+    (W : Finset C) : Prop :=
+  ∀ i ∈ inst.voters, ∀ T ⊆ inst.candidates,
+    (inst.approves i ∩ T).card > (inst.approves i ∩ W).card →
+    ∑ c ∈ T, p i c > 1
+
+/--
+Weak priceability exhaustiveness (Munagala et al.): for every voter i and every
+non-elected candidate d that i approves, i's price for d plus their prices for
+elected approved candidates exceeds 1.
+-/
+def PriceSystem.weakly_exhaustive (p : PriceSystem V C) (inst : ABCInstance V C k)
+    (W : Finset C) : Prop :=
+  ∀ i ∈ inst.voters, ∀ d ∈ (inst.approves i ∩ inst.candidates) \ W,
+    p i d + ∑ c ∈ inst.approves i ∩ W, p i c > 1
+
+/--
+A committee W is Lindahl priceable (Munagala et al.) if there exists a non-negative
+price system satisfying the total payment bound and Lindahl exhaustiveness.
+
+This is stronger than weak priceability and implies core stability.
+-/
+def is_lindahl_priceable (inst : ABCInstance V C k) (W : Finset C) : Prop :=
+  ∃ p : PriceSystem V C,
+    p.nonneg inst ∧
+    p.total_payment_bounded inst ∧
+    p.lindahl_exhaustive inst W
+
+/--
+A committee W is weakly priceable (Munagala et al.) if there exists a non-negative
+price system satisfying the total payment bound and weak exhaustiveness.
+
+This is weaker than both Lindahl priceability and priceability (Peters-Skowron).
+-/
+def is_weakly_priceable (inst : ABCInstance V C k) (W : Finset C) : Prop :=
+  ∃ p : PriceSystem V C,
+    p.nonneg inst ∧
+    p.total_payment_bounded inst ∧
+    p.weakly_exhaustive inst W
+
 end ABCInstance

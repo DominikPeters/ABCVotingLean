@@ -5,11 +5,11 @@ This repository contains a formalization of the theory of approval-based committ
 # Axioms
 
 * JR, PJR, EJR, EJR+, FJR, FPJR
-* Priceability
-* Core, Disjoint Core
+* Priceability, weak and Lindahl priceability
+* Core, disjoint core, sub-core
 * Pareto-optimality
 * Strategyproofness
-* Committee Monotonicity
+* Committee monotonicity
 * Implications between axioms (e.g., Core implies FJR, EJR+ implies EJR, Priceability implies PJR+)
 
 # Voting Rules
@@ -38,7 +38,6 @@ This repository contains a formalization of the theory of approval-based committ
 
 * Formalize various counterexamples (MES failing core; Phragmen failing EJR, PO-failures for MES and Phragmen)
 * GJCR?
-* Sub-core?
 * Stuff from Janson (e.g. monotonicity properties)
 * perhaps: PAV intersects core for k = 8
 * Proportionality degree (definition, EJR => 1/2, l-1 => EJR, extreme stretch goal: prop degree of Phragmen, and seqPav results)

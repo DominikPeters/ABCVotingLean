@@ -47,4 +47,25 @@ def is_in_disjoint_core (inst : ABCInstance V C k) (W : Finset C) : Prop :=
     inst.is_l_large S l ∧ T.card ≤ l →
     ∃ i ∈ S, (W ∩ inst.approves i).card ≥ (T ∩ inst.approves i).card
 
+/--
+Sub-core: A committee W lies in the sub-core if no coalition can deviate to a committee
+where every member strictly improves (i.e., their approved candidates in the new committee
+form a proper superset of their approved candidates in the original committee).
+
+Formally: For all nonempty S ⊆ V and T ⊆ C with |T| ≤ |S|·k/n, there exists i ∈ S such that
+it is NOT the case that (W ∩ A_i) ⊊ (T ∩ A_i).
+
+This is weaker than the core: any committee in the core is also in the sub-core.
+
+Reference: "Auditing for Core Stability in Participatory Budgeting"
+by Munagala, Shen, Wang (WINE 2022)
+-/
+def is_in_sub_core (inst : ABCInstance V C k) (W : Finset C) : Prop :=
+  ∀ (S : Finset V) (T : Finset C),
+    S ⊆ inst.voters →
+    T ⊆ inst.candidates →
+    S.Nonempty →
+    T.card * inst.voters.card ≤ S.card * k →
+    ∃ i ∈ S, ¬((W ∩ inst.approves i) ⊂ (T ∩ inst.approves i))
+
 end ABCInstance

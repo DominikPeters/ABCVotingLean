@@ -36,7 +36,7 @@ import ABCVoting.Rules.PAV.Defs
 import ABCVoting.Rules.PAV.Pareto
 import ABCVoting.Rules.PAV.EJR
 import ABCVoting.Rules.PAV.DisjointCore
-import ABCVoting.Rules.PAV.CoreUpTo7
+import ABCVoting.Rules.PAV.CoreUpTok7
 import ABCVoting.Rules.PAV.Counterexamples
 
 -- ============================================================================
